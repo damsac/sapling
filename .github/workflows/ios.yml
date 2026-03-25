@@ -1,0 +1,60 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-ios:
+    name: Build XCFramework + iOS app
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Install tools
+        run: brew install xcodegen xcbeautify
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build XCFramework
+        run: ./build-ios.sh --release
+
+      - name: Verify bindings are up-to-date
+        run: |
+          if [[ -n $(git diff --name-only ios/Bindings/) ]]; then
+            echo "::error::Swift bindings are out of date. Run ./build-ios.sh and commit the updated bindings."
+            git diff ios/Bindings/
+            exit 1
+          fi
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Build iOS app
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project Sapling.xcodeproj \
+            -scheme Sapling \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            | xcbeautify --is-ci
+
+      - name: Upload XCFramework
+        uses: actions/upload-artifact@v4
+        with:
+          name: SaplingCore.xcframework
+          path: ios/Frameworks/SaplingCore.xcframework
+          retention-days: 5

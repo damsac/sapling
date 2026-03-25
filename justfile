@@ -110,22 +110,21 @@ android-apk: android-build
 android-install: android-build
   cd android && ./gradlew :app:installDebug
 
-# ── iOS (future — requires macOS + Xcode) ───────────────────────────────────
+# ── iOS (requires macOS + Xcode) ─────────────────────────────────────────
+
+# Full iOS build: cross-compile + bindings + xcframework + xcodegen
+ios-build:
+  ./build-ios.sh --release
+  cd ios && xcodegen generate
 
 # Cross-compile Rust core for iOS device + simulator
 ios-rust:
-  @echo "iOS cross-compilation requires macOS + Xcode."
-  @echo "Targets: aarch64-apple-ios, aarch64-apple-ios-sim, x86_64-apple-ios"
-  @echo ""
-  @echo "When on Mac hardware, run:"
-  @echo "  cargo build -p sapling-ffi --release --target aarch64-apple-ios"
-  @echo "  cargo build -p sapling-ffi --release --target aarch64-apple-ios-sim"
-  @echo "  cargo build -p sapling-ffi --release --target x86_64-apple-ios"
+  cargo build -p sapling-ffi --lib --release --target aarch64-apple-ios
+  cargo build -p sapling-ffi --lib --release --target aarch64-apple-ios-sim
 
-# Build SaplingCore.xcframework (future — requires macOS + Xcode)
-ios-xcframework: gen-swift ios-rust
-  @echo "xcframework creation requires macOS + Xcode."
-  @echo "Steps: lipo sim slices, xcodebuild -create-xcframework"
+# Build SaplingCore.xcframework (runs full pipeline — build-ios.sh handles everything)
+ios-xcframework:
+  ./build-ios.sh --release
 
 # ── CI / QA ─────────────────────────────────────────────────────────────────
 

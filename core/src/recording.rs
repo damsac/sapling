@@ -30,6 +30,12 @@ pub struct Recorder {
     slow_since_ms: Option<i64>,
 }
 
+impl Default for Recorder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Recorder {
     pub fn new() -> Self {
         Recorder {
@@ -67,9 +73,7 @@ impl Recorder {
 
     /// Add a GPS location. Returns None if filtered out, Some(update) if accepted.
     pub fn add_location(&mut self, point: TrackPoint) -> Option<RecordingUpdate> {
-        if self.trip_id.is_none() {
-            return None;
-        }
+        self.trip_id.as_ref()?;
 
         // Filter: reject poor accuracy
         if point.h_accuracy > MAX_H_ACCURACY {
@@ -182,8 +186,8 @@ impl Recorder {
 
 #[cfg(test)]
 pub mod test_utils {
-    use proptest::prelude::*;
     use crate::models::TrackPoint;
+    use proptest::prelude::*;
 
     prop_compose! {
         pub fn arb_track_point()(

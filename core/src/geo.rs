@@ -10,8 +10,8 @@ pub fn haversine_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
     let dlat = (lat2 - lat1).to_radians();
     let dlon = (lon2 - lon1).to_radians();
 
-    let a = (dlat / 2.0).sin().powi(2)
-        + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
+    let a =
+        (dlat / 2.0).sin().powi(2) + lat1_rad.cos() * lat2_rad.cos() * (dlon / 2.0).sin().powi(2);
     let c = 2.0 * a.sqrt().asin();
 
     EARTH_RADIUS_M * c
@@ -21,11 +21,9 @@ pub fn haversine_distance(lat1: f64, lon1: f64, lat2: f64, lon2: f64) -> f64 {
 pub fn elevation_gain(points: &[TrackPoint]) -> f64 {
     points
         .windows(2)
-        .filter_map(|w| {
-            match (w[0].elevation, w[1].elevation) {
-                (Some(a), Some(b)) if b > a => Some(b - a),
-                _ => None,
-            }
+        .filter_map(|w| match (w[0].elevation, w[1].elevation) {
+            (Some(a), Some(b)) if b > a => Some(b - a),
+            _ => None,
         })
         .sum()
 }
@@ -34,11 +32,9 @@ pub fn elevation_gain(points: &[TrackPoint]) -> f64 {
 pub fn elevation_loss(points: &[TrackPoint]) -> f64 {
     points
         .windows(2)
-        .filter_map(|w| {
-            match (w[0].elevation, w[1].elevation) {
-                (Some(a), Some(b)) if a > b => Some(a - b),
-                _ => None,
-            }
+        .filter_map(|w| match (w[0].elevation, w[1].elevation) {
+            (Some(a), Some(b)) if a > b => Some(a - b),
+            _ => None,
         })
         .sum()
 }
@@ -127,10 +123,7 @@ mod tests {
 
     #[test]
     fn test_elevation_gain_no_elevation() {
-        let points = vec![
-            make_tp(0.0, 0.0, None),
-            make_tp(0.0, 0.0, None),
-        ];
+        let points = vec![make_tp(0.0, 0.0, None), make_tp(0.0, 0.0, None)];
         assert!((elevation_gain(&points) - 0.0).abs() < 0.01);
     }
 
