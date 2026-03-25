@@ -9,6 +9,11 @@ class LocationProvider {
     private var updateTask: Task<Void, Never>?
     private var backgroundSession: CLBackgroundActivitySession?
 
+    /// Current authorization status without triggering a permission prompt.
+    static var authorizationStatus: CLAuthorizationStatus {
+        CLLocationManager().authorizationStatus
+    }
+
     func startUpdates() {
         // Create a background activity session so iOS keeps delivering
         // location updates when the app is backgrounded
@@ -18,9 +23,8 @@ class LocationProvider {
             do {
                 for try await update in CLLocationUpdate.liveUpdates() {
                     guard let location = update.location else { continue }
-                    // Skip low-accuracy readings
-                    guard location.horizontalAccuracy >= 0,
-                          location.horizontalAccuracy <= 50 else { continue }
+                    // Skip invalid readings (negative means CoreLocation has no fix)
+                    guard location.horizontalAccuracy >= 0 else { continue }
                     await MainActor.run {
                         self.currentLocation = location
                         self.isAuthorized = true

@@ -41,3 +41,17 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSLocationWhenInUseUsageDescription: Sapling uses your location to show where you are on the map and record your trail.
+  SaplingTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+      - path: Sources
+      - path: Bindings
+        excludes:
+          - "*.h"
+          - "*.modulemap"
+    dependencies:
+      - target: Sapling
+      - framework: Frameworks/SaplingCore.xcframework
+        embed: false

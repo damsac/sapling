@@ -50,11 +50,13 @@ class RecordingViewModel {
                     let point = FfiTrackPoint(
                         latitude: location.coordinate.latitude,
                         longitude: location.coordinate.longitude,
-                        elevation: location.altitude > -999 ? location.altitude : nil,
+                        // Pass nil when CoreLocation has no vertical fix (negative vAccuracy)
+                        elevation: location.verticalAccuracy >= 0 ? location.altitude : nil,
                         hAccuracy: location.horizontalAccuracy,
                         vAccuracy: location.verticalAccuracy,
-                        speed: max(0, location.speed),
-                        course: location.course >= 0 ? location.course : 0,
+                        // Pass raw values — Rust handles negative (invalid) speed/course
+                        speed: location.speed,
+                        course: location.course,
                         timestampMs: Int64(ts * 1000),
                         baroRelativeAltitude: nil
                     )

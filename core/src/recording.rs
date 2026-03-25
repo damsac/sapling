@@ -156,6 +156,10 @@ impl Recorder {
     }
 
     fn update_activity_state(&mut self, point: &TrackPoint) {
+        // Negative speed means CoreLocation couldn't determine speed — ignore for state transitions
+        if point.speed < 0.0 {
+            return;
+        }
         match self.state {
             ActivityState::Moving => {
                 if point.speed < PAUSE_SPEED {
