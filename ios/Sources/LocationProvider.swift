@@ -18,9 +18,8 @@ class LocationProvider {
             do {
                 for try await update in CLLocationUpdate.liveUpdates() {
                     guard let location = update.location else { continue }
-                    // Skip low-accuracy readings
-                    guard location.horizontalAccuracy >= 0,
-                          location.horizontalAccuracy <= 50 else { continue }
+                    // Skip invalid readings (negative means CoreLocation has no fix)
+                    guard location.horizontalAccuracy >= 0 else { continue }
                     await MainActor.run {
                         self.currentLocation = location
                         self.isAuthorized = true
