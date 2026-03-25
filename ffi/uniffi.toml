@@ -1,0 +1,7 @@
+[bindings.kotlin]
+package_name = "dev.damsac.sapling.rust"
+cdylib_name = "sapling"
+
+[bindings.swift]
+module_name = "SaplingCore"
+cdylib_name = "sapling"
