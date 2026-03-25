@@ -49,7 +49,9 @@
         androidSdk = android-nixpkgs.sdk.${system} (sdkPkgs: with sdkPkgs; [
           cmdline-tools-latest
           platform-tools
+          build-tools-34-0-0
           build-tools-35-0-0
+          platforms-android-34
           platforms-android-35
           ndk-28-2-13676358
         ]);
@@ -66,6 +68,7 @@
             pkgs.cargo-ndk       # Cross-compile Rust for Android via cargo ndk
             pkgs.just             # Task runner (justfile)
             pkgs.jdk17_headless   # Gradle needs JDK 17
+            pkgs.gradle           # Android build system
           ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
             pkgs.xcodegen        # iOS project generation (Mac only)
           ];
