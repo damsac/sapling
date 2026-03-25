@@ -47,14 +47,12 @@ jobs:
       - name: Build iOS app
         working-directory: ios
         run: |
-          set -o pipefail
           xcodebuild build \
             -project Sapling.xcodeproj \
             -scheme Sapling \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            ARCHS=arm64 \
-            | xcbeautify --is-ci
+            ARCHS=arm64
 
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4
