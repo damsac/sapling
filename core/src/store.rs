@@ -420,7 +420,7 @@ mod tests {
         let store = test_store();
 
         let input1 = CreateGemInput {
-            gem_type: GemType::Campsite,
+            gem_type: GemType::Camp,
             title: "Ridge Camp".into(),
             notes: None,
             latitude: 36.0,
@@ -430,7 +430,7 @@ mod tests {
             tags: vec![],
         };
         let input2 = CreateGemInput {
-            gem_type: GemType::Viewpoint,
+            gem_type: GemType::Beauty,
             title: "Sunset Vista".into(),
             notes: Some("Best at golden hour".into()),
             latitude: 36.1,
@@ -466,7 +466,7 @@ mod tests {
 
         store
             .create_gem(&CreateGemInput {
-                gem_type: GemType::Campsite,
+                gem_type: GemType::Camp,
                 title: "Pine Flat".into(),
                 notes: Some("Sheltered site near creek".into()),
                 latitude: 37.1,

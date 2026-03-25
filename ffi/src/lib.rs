@@ -40,27 +40,21 @@ impl From<SaplingError> for FfiError {
 
 #[derive(uniffi::Enum)]
 pub enum FfiGemType {
-    Campsite,
     Water,
-    Hazard,
-    Viewpoint,
-    Trailhead,
-    Junction,
-    Resupply,
-    Note,
+    Camp,
+    Beauty,
+    Service,
+    Custom,
 }
 
 impl From<GemType> for FfiGemType {
     fn from(g: GemType) -> Self {
         match g {
-            GemType::Campsite => FfiGemType::Campsite,
             GemType::Water => FfiGemType::Water,
-            GemType::Hazard => FfiGemType::Hazard,
-            GemType::Viewpoint => FfiGemType::Viewpoint,
-            GemType::Trailhead => FfiGemType::Trailhead,
-            GemType::Junction => FfiGemType::Junction,
-            GemType::Resupply => FfiGemType::Resupply,
-            GemType::Note => FfiGemType::Note,
+            GemType::Camp => FfiGemType::Camp,
+            GemType::Beauty => FfiGemType::Beauty,
+            GemType::Service => FfiGemType::Service,
+            GemType::Custom => FfiGemType::Custom,
         }
     }
 }
@@ -68,14 +62,11 @@ impl From<GemType> for FfiGemType {
 impl From<FfiGemType> for GemType {
     fn from(g: FfiGemType) -> Self {
         match g {
-            FfiGemType::Campsite => GemType::Campsite,
             FfiGemType::Water => GemType::Water,
-            FfiGemType::Hazard => GemType::Hazard,
-            FfiGemType::Viewpoint => GemType::Viewpoint,
-            FfiGemType::Trailhead => GemType::Trailhead,
-            FfiGemType::Junction => GemType::Junction,
-            FfiGemType::Resupply => GemType::Resupply,
-            FfiGemType::Note => GemType::Note,
+            FfiGemType::Camp => GemType::Camp,
+            FfiGemType::Beauty => GemType::Beauty,
+            FfiGemType::Service => GemType::Service,
+            FfiGemType::Custom => GemType::Custom,
         }
     }
 }

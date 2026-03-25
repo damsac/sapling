@@ -70,8 +70,8 @@ fun SaplingScreen(dbPath: String) {
             try {
                 val gem = core.createGem(
                     FfiCreateGemInput(
-                        gemType = FfiGemType.VIEWPOINT,
-                        title = "Test Viewpoint #${gemCount + 1}",
+                        gemType = FfiGemType.BEAUTY,
+                        title = "Test Beauty Spot #${gemCount + 1}",
                         notes = "Created from Android",
                         latitude = 37.7749,
                         longitude = -122.4194,
