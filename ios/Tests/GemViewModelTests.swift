@@ -41,8 +41,8 @@ final class GemViewModelTests: XCTestCase {
         vm.startGemCreation(at: coord)
 
         XCTAssertNotNil(vm.pendingGemCoordinate)
-        XCTAssertEqual(vm.pendingGemCoordinate?.latitude, 40.0, accuracy: 0.001)
-        XCTAssertEqual(vm.pendingGemCoordinate?.longitude, -105.0, accuracy: 0.001)
+        XCTAssertEqual(vm.pendingGemCoordinate!.latitude, 40.0, accuracy: 0.001)
+        XCTAssertEqual(vm.pendingGemCoordinate!.longitude, -105.0, accuracy: 0.001)
     }
 
     func testStartGemCreationShowsTypePicker() {
