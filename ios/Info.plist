@@ -20,5 +20,11 @@
     <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Sapling uses your location to record your hiking trail and show your position on the map.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Sapling needs background location access to keep recording your trail when the app is in your pocket.</string>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+    </array>
 </dict>
 </plist>

@@ -7,8 +7,13 @@ class LocationProvider {
     var isAuthorized: Bool = false
 
     private var updateTask: Task<Void, Never>?
+    private var backgroundSession: CLBackgroundActivitySession?
 
     func startUpdates() {
+        // Create a background activity session so iOS keeps delivering
+        // location updates when the app is backgrounded
+        backgroundSession = CLBackgroundActivitySession()
+
         updateTask = Task {
             do {
                 for try await update in CLLocationUpdate.liveUpdates() {
@@ -31,5 +36,7 @@ class LocationProvider {
     func stopUpdates() {
         updateTask?.cancel()
         updateTask = nil
+        backgroundSession?.invalidate()
+        backgroundSession = nil
     }
 }
