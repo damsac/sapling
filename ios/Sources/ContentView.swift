@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var viewModel: RecordingViewModel
+    @State private var gemViewModel: GemViewModel
 
     init() {
         let documentsDir = FileManager.default.urls(
@@ -11,14 +12,22 @@ struct ContentView: View {
         let dbPath = documentsDir.appendingPathComponent("sapling.db").path
         let core = try! SaplingCore(dbPath: dbPath)
         _viewModel = State(initialValue: RecordingViewModel(core: core))
+        _gemViewModel = State(initialValue: GemViewModel(core: core))
     }
 
     var body: some View {
-        ZStack {
-            // Full-screen map
+        ZStack(alignment: .bottom) {
+            // Full-screen map with gem markers and gestures
             TrailMapView(
                 trackCoordinates: viewModel.trackCoordinates,
-                userLocation: viewModel.currentLocation
+                userLocation: viewModel.currentLocation,
+                gems: gemViewModel.gems,
+                onLongPress: { coordinate in
+                    gemViewModel.startGemCreation(at: coordinate)
+                },
+                onGemTapped: { gem in
+                    gemViewModel.selectGem(gem)
+                }
             )
             .ignoresSafeArea()
 
@@ -61,25 +70,76 @@ struct ContentView: View {
 
                 Spacer()
 
-                // Record / stop button at bottom
-                Button {
-                    if viewModel.isRecording {
-                        viewModel.stopRecording()
-                    } else {
-                        viewModel.startRecording()
-                    }
-                } label: {
-                    Circle()
-                        .fill(viewModel.isRecording ? .red : .green)
-                        .frame(width: 64, height: 64)
-                        .overlay {
-                            Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
-                                .font(.title)
-                                .foregroundStyle(.white)
+                // Gem creation sheets (anchored to bottom)
+                if gemViewModel.isShowingTypePicker {
+                    GemTypePicker(
+                        onSelect: { type in
+                            gemViewModel.selectType(type)
+                        },
+                        onCancel: {
+                            gemViewModel.cancelCreation()
                         }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 8)
                 }
-                .padding(.bottom, 40)
+
+                if gemViewModel.isShowingQuickAdd,
+                   let type = gemViewModel.pendingGemType,
+                   let coord = gemViewModel.pendingGemCoordinate
+                {
+                    GemQuickAdd(
+                        gemType: type,
+                        coordinate: coord,
+                        onSave: { title, notes in
+                            gemViewModel.saveGem(title: title, notes: notes)
+                        },
+                        onCancel: {
+                            gemViewModel.cancelCreation()
+                        }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 8)
+                }
+
+                if gemViewModel.isShowingDetail, let gem = gemViewModel.selectedGem {
+                    GemDetailSheet(
+                        gem: gem,
+                        onDismiss: {
+                            gemViewModel.dismissDetail()
+                        }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 8)
+                }
+
+                // Record / stop button at bottom (hidden during gem sheets)
+                if !gemViewModel.isShowingTypePicker
+                    && !gemViewModel.isShowingQuickAdd
+                    && !gemViewModel.isShowingDetail
+                {
+                    Button {
+                        if viewModel.isRecording {
+                            viewModel.stopRecording()
+                        } else {
+                            viewModel.startRecording()
+                        }
+                    } label: {
+                        Circle()
+                            .fill(viewModel.isRecording ? .red : .green)
+                            .frame(width: 64, height: 64)
+                            .overlay {
+                                Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
+                                    .font(.title)
+                                    .foregroundStyle(.white)
+                            }
+                    }
+                    .padding(.bottom, 40)
+                }
             }
+            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingTypePicker)
+            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingQuickAdd)
+            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingDetail)
         }
     }
 
