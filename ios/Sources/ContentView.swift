@@ -1,8 +1,10 @@
 import SwiftUI
+import CoreLocation
 
 struct ContentView: View {
     @State private var viewModel: RecordingViewModel
     @State private var gemViewModel: GemViewModel
+    @State private var showBackgroundModal: Bool = false
 
     init() {
         let documentsDir = FileManager.default.urls(
@@ -122,7 +124,7 @@ struct ContentView: View {
                         if viewModel.isRecording {
                             viewModel.stopRecording()
                         } else {
-                            viewModel.startRecording()
+                            handleRecordTap()
                         }
                     } label: {
                         Circle()
@@ -140,6 +142,62 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingTypePicker)
             .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingQuickAdd)
             .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingDetail)
+
+            // Background location permission modal
+            if showBackgroundModal {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation { showBackgroundModal = false }
+                    }
+
+                BackgroundLocationModal(
+                    onEnableSettings: {
+                        withAnimation { showBackgroundModal = false }
+                        if let url = URL(string: UIApplication.openSettingsURLString) {
+                            UIApplication.shared.open(url)
+                        }
+                    },
+                    onRecordAnyway: {
+                        withAnimation { showBackgroundModal = false }
+                        viewModel.startRecording()
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: showBackgroundModal)
+    }
+
+    // MARK: - Record Tap Authorization Check
+
+    private func handleRecordTap() {
+        let status = LocationProvider.authorizationStatus
+
+        switch status {
+        case .authorizedAlways:
+            // Full background access — start immediately
+            viewModel.startRecording()
+
+        case .authorizedWhenInUse:
+            let hideModal = UserDefaults.standard.bool(forKey: "hideBackgroundLocationModal")
+            if hideModal {
+                // User opted out of the reminder — just record
+                viewModel.startRecording()
+            } else {
+                withAnimation { showBackgroundModal = true }
+            }
+
+        case .notDetermined:
+            // System will prompt automatically when location updates start
+            viewModel.startRecording()
+
+        case .denied, .restricted:
+            // Location fully disabled — show the modal so they can go to Settings
+            withAnimation { showBackgroundModal = true }
+
+        @unknown default:
+            viewModel.startRecording()
         }
     }
 

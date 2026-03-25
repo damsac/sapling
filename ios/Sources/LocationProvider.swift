@@ -9,6 +9,11 @@ class LocationProvider {
     private var updateTask: Task<Void, Never>?
     private var backgroundSession: CLBackgroundActivitySession?
 
+    /// Current authorization status without triggering a permission prompt.
+    static var authorizationStatus: CLAuthorizationStatus {
+        CLLocationManager().authorizationStatus
+    }
+
     func startUpdates() {
         // Create a background activity session so iOS keeps delivering
         // location updates when the app is backgrounded
