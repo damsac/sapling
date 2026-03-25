@@ -57,6 +57,19 @@ jobs:
             ARCHS=arm64 \
             | xcbeautify --is-ci
 
+      - name: Test iOS app
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Sapling.xcodeproj \
+            -scheme Sapling \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            ARCHS=arm64 \
+            | xcbeautify --is-ci
+
       - name: Upload XCFramework
         uses: actions/upload-artifact@v4
         with:
