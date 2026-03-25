@@ -40,6 +40,10 @@ jobs:
         working-directory: ios
         run: xcodegen generate
 
+      - name: Resolve SPM packages
+        working-directory: ios
+        run: xcodebuild -resolvePackageDependencies -project Sapling.xcodeproj -scheme Sapling
+
       - name: Build iOS app
         working-directory: ios
         run: |
