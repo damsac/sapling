@@ -40,3 +40,4 @@ targets:
           - arm64
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
+        NSLocationWhenInUseUsageDescription: Sapling uses your location to show where you are on the map and record your trail.

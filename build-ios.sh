@@ -23,6 +23,55 @@ STAGING_DIR="$SCRIPT_DIR/target/uniffi-xcframework-staging"
 
 echo "=== Sapling iOS build ==="
 
+# ----- Nix dev shell compatibility -----
+# When running inside a Nix dev shell on macOS, several environment variables
+# point to Nix-provided SDK paths that only contain macOS headers/libraries.
+# These break iOS cross-compilation because:
+#   - SDKROOT / DEVELOPER_DIR point to Nix's macOS-only SDK, not Xcode's
+#   - NIX_CFLAGS_COMPILE injects -mmacosx-version-min, conflicting with iOS targets
+#   - NIX_LDFLAGS links against macOS-only libraries (e.g. libiconv.dylib)
+#   - LIBRARY_PATH adds Nix library paths that confuse the iOS linker
+#
+# The fix: detect Nix, unset the problematic vars, and point CC/linker
+# to the system clang which knows how to cross-compile for iOS via Xcode.
+if [ -n "${NIX_CC:-}" ] && [ "$(uname -s)" = "Darwin" ]; then
+  echo "Nix dev shell detected — fixing env for iOS cross-compilation"
+
+  # Nix provides its own xcrun/SDK that only knows macOS. Unset its SDK vars
+  # so the cc-rs crate (used by libsqlite3-sys etc.) finds the real Xcode iOS SDK.
+  unset SDKROOT
+  unset DEVELOPER_DIR  # must unset BEFORE calling xcode-select (it reads this var)
+  unset NIX_CFLAGS_COMPILE
+  unset NIX_LDFLAGS
+  unset LIBRARY_PATH
+  unset NIX_CC
+  unset NIX_CC_WRAPPER_TARGET_HOST_x86_64_apple_darwin
+  unset NIX_CC_WRAPPER_TARGET_HOST_aarch64_apple_darwin
+
+  # Point DEVELOPER_DIR to real Xcode so xcrun can find iphoneos SDK.
+  # Must use /usr/bin/xcode-select (not Nix's) and call AFTER unsetting DEVELOPER_DIR.
+  XCODE_DEV_DIR=$(/usr/bin/xcode-select -p 2>/dev/null || true)
+  if [ -n "$XCODE_DEV_DIR" ] && [ -d "$XCODE_DEV_DIR" ]; then
+    export DEVELOPER_DIR="$XCODE_DEV_DIR"
+  else
+    echo "error: Xcode not found. Install Xcode and run xcode-select --install."
+    exit 1
+  fi
+
+  # Put /usr/bin first so the real xcrun is found instead of Nix's wrapper
+  export PATH="/usr/bin:$PATH"
+
+  # Use system clang for iOS cross-compilation (Nix clang can't target iOS)
+  export CC="/usr/bin/clang"
+  export CXX="/usr/bin/clang++"
+  export AR="/usr/bin/ar"
+
+  # Cargo linker config for iOS targets — must use system clang
+  export CARGO_TARGET_AARCH64_APPLE_IOS_LINKER="/usr/bin/clang"
+  export CARGO_TARGET_AARCH64_APPLE_IOS_SIM_LINKER="/usr/bin/clang"
+  export CARGO_TARGET_X86_64_APPLE_IOS_LINKER="/usr/bin/clang"
+fi
+
 # Step 1: Cross-compile for each iOS target
 for target in "${TARGETS[@]}"; do
   echo "Building $FFI_CRATE for $target ($PROFILE)..."

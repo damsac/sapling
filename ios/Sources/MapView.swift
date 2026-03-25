@@ -14,40 +14,42 @@ struct TrailMapView: View {
     )
 
     var body: some View {
-        MapView(camera: $camera, styleURL: styleURL) {
-            // Track polyline — only render when we have at least 2 points
-            if trackCoordinates.count >= 2 {
-                let polyline = MLNPolyline(
-                    coordinates: trackCoordinates,
-                    count: UInt(trackCoordinates.count)
+        MapView(styleURL: styleURL, camera: $camera) {
+            // ShapeSource must be a let binding — MapViewContentBuilder
+            // cannot handle it as a direct expression
+            let trailSource = ShapeSource(identifier: "trail") {
+                // Must use MLNPolylineFeature (not MLNPolyline) for ShapeSource
+                MLNPolylineFeature(
+                    coordinates: trackCoordinates.isEmpty
+                        ? [CLLocationCoordinate2D(latitude: 0, longitude: 0)]
+                        : trackCoordinates
                 )
-
-                ShapeSource(identifier: "trail") {
-                    polyline
-                }
-
-                LineStyleLayer(identifier: "trail-line", source: "trail")
-                    .lineColor(.constant(.blue))
-                    .lineWidth(.constant(4))
-                    .lineCap(.constant(.round))
-                    .lineJoin(.constant(.round))
             }
+
+            // Style modifiers take direct values, not .constant() wrapped
+            LineStyleLayer(identifier: "trail-line", source: trailSource)
+                .lineColor(.systemBlue)
+                .lineWidth(4)
+                .lineCap(.round)
+                .lineJoin(.round)
         }
         .mapControls {
             CompassView()
             LogoView()
-                .position(.bottomLeading)
+                .position(.bottomLeft)
             AttributionButton()
-                .position(.bottomTrailing)
+                .position(.bottomRight)
         }
         .onAppear {
-            if let location = userLocation {
-                camera = .center(location.coordinate, zoom: 15)
+            // Switch to tracking once location is available
+            if userLocation != nil {
+                camera = .trackUserLocation(zoom: 15)
             }
         }
         .onChange(of: userLocation?.coordinate.latitude) { _, _ in
-            if let location = userLocation {
-                camera = .center(location.coordinate, zoom: 15)
+            // Lock to user tracking on first location fix (prevents grey screen on startup)
+            if userLocation != nil {
+                camera = .trackUserLocation(zoom: 15)
             }
         }
     }
