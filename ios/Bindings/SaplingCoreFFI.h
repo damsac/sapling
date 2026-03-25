@@ -281,6 +281,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_create_gem(void*_Nonnull ptr, Ru
 RustBuffer uniffi_sapling_fn_method_saplingcore_get_gem(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_GET_TRACK_POINTS
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_GET_TRACK_POINTS
+RustBuffer uniffi_sapling_fn_method_saplingcore_get_track_points(void*_Nonnull ptr, RustBuffer trip_id, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_IMPORT_GPX
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_IMPORT_GPX
 RustBuffer uniffi_sapling_fn_method_saplingcore_import_gpx(void*_Nonnull ptr, RustBuffer file_path, RustCallStatus *_Nonnull out_status
@@ -601,6 +606,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_create_gem(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_GEM
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_GEM
 uint16_t uniffi_sapling_checksum_method_saplingcore_get_gem(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_TRACK_POINTS
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_TRACK_POINTS
+uint16_t uniffi_sapling_checksum_method_saplingcore_get_track_points(void
     
 );
 #endif

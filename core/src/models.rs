@@ -46,27 +46,21 @@ pub struct CreateGemInput {
 /// The type/category of a Gem.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GemType {
-    Campsite,
     Water,
-    Hazard,
-    Viewpoint,
-    Trailhead,
-    Junction,
-    Resupply,
-    Note,
+    Camp,
+    Beauty,
+    Service,
+    Custom,
 }
 
 impl GemType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            GemType::Campsite => "campsite",
             GemType::Water => "water",
-            GemType::Hazard => "hazard",
-            GemType::Viewpoint => "viewpoint",
-            GemType::Trailhead => "trailhead",
-            GemType::Junction => "junction",
-            GemType::Resupply => "resupply",
-            GemType::Note => "note",
+            GemType::Camp => "camp",
+            GemType::Beauty => "beauty",
+            GemType::Service => "service",
+            GemType::Custom => "custom",
         }
     }
 }
@@ -76,17 +70,12 @@ impl std::str::FromStr for GemType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "campsite" => Ok(GemType::Campsite),
             "water" => Ok(GemType::Water),
-            "hazard" => Ok(GemType::Hazard),
-            "viewpoint" => Ok(GemType::Viewpoint),
-            "trailhead" => Ok(GemType::Trailhead),
-            "junction" => Ok(GemType::Junction),
-            "resupply" => Ok(GemType::Resupply),
-            "note" => Ok(GemType::Note),
-            other => Err(crate::error::SaplingError::InvalidInput(format!(
-                "unknown gem type: {other}"
-            ))),
+            "camp" => Ok(GemType::Camp),
+            "beauty" => Ok(GemType::Beauty),
+            "service" => Ok(GemType::Service),
+            "custom" => Ok(GemType::Custom),
+            _other => Ok(GemType::Custom), // Unknown types fall back to Custom for forward compatibility
         }
     }
 }

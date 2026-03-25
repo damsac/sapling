@@ -1,10 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var statusText = "Ready"
-    @State private var gemCount = 0
-
-    private let core: SaplingCore
+    @State private var viewModel: RecordingViewModel
 
     init() {
         let documentsDir = FileManager.default.urls(
@@ -12,50 +9,103 @@ struct ContentView: View {
             in: .userDomainMask
         ).first!
         let dbPath = documentsDir.appendingPathComponent("sapling.db").path
-        self.core = try! SaplingCore(dbPath: dbPath)
+        let core = try! SaplingCore(dbPath: dbPath)
+        _viewModel = State(initialValue: RecordingViewModel(core: core))
     }
 
     var body: some View {
-        VStack(spacing: 24) {
-            Text("\u{1F331}")
-                .font(.system(size: 64))
+        ZStack {
+            // Full-screen map
+            TrailMapView(
+                trackCoordinates: viewModel.trackCoordinates,
+                userLocation: viewModel.currentLocation
+            )
+            .ignoresSafeArea()
 
-            Text("Sapling")
-                .font(.largeTitle)
-                .fontWeight(.bold)
+            // Recording controls overlay
+            VStack {
+                // Stats bar at top when recording
+                if viewModel.isRecording {
+                    HStack(spacing: 16) {
+                        VStack {
+                            Text(formatDistance(viewModel.distanceMeters))
+                                .font(.title3.monospacedDigit())
+                                .fontWeight(.semibold)
+                            Text("Distance")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
 
-            Text("Trail companion powered by Rust")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                        VStack {
+                            Text(formatElevation(viewModel.elevationGain))
+                                .font(.title3.monospacedDigit())
+                                .fontWeight(.semibold)
+                            Text("Gain")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
 
-            Text("Gems created: \(gemCount)")
-                .font(.title3)
-
-            Button("Create Test Gem") {
-                do {
-                    let input = FfiCreateGemInput(
-                        gemType: .viewpoint,
-                        title: "Test Viewpoint #\(gemCount + 1)",
-                        notes: "Created from iOS",
-                        latitude: 37.7749,
-                        longitude: -122.4194,
-                        elevation: 100.0,
-                        confidence: 90,
-                        tags: ["test", "ios"]
-                    )
-                    let gem = try core.createGem(input: input)
-                    gemCount += 1
-                    statusText = "Created gem: \(gem.title)"
-                } catch {
-                    statusText = "Error: \(error.localizedDescription)"
+                        VStack {
+                            Text(formatDuration(viewModel.elapsedMs))
+                                .font(.title3.monospacedDigit())
+                                .fontWeight(.semibold)
+                            Text("Time")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding()
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.top)
                 }
-            }
-            .buttonStyle(.borderedProminent)
 
-            Text(statusText)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Spacer()
+
+                // Record / stop button at bottom
+                Button {
+                    if viewModel.isRecording {
+                        viewModel.stopRecording()
+                    } else {
+                        viewModel.startRecording()
+                    }
+                } label: {
+                    Circle()
+                        .fill(viewModel.isRecording ? .red : .green)
+                        .frame(width: 64, height: 64)
+                        .overlay {
+                            Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
+                                .font(.title)
+                                .foregroundStyle(.white)
+                        }
+                }
+                .padding(.bottom, 40)
+            }
         }
-        .padding()
+    }
+
+    // MARK: - Formatters
+
+    private func formatDistance(_ meters: Double) -> String {
+        if meters < 1000 {
+            return String(format: "%.0f m", meters)
+        } else {
+            return String(format: "%.1f km", meters / 1000)
+        }
+    }
+
+    private func formatElevation(_ meters: Double) -> String {
+        String(format: "%.0f m", meters)
+    }
+
+    private func formatDuration(_ ms: Int64) -> String {
+        let totalSeconds = ms / 1000
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
     }
 }

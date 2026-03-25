@@ -516,6 +516,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func getGem(id: String) throws  -> FfiGem?
     
+    func getTrackPoints(tripId: String) throws  -> [FfiTrackPoint]
+    
     func importGpx(filePath: String) throws  -> [FfiTrackPoint]
     
     func listGems() throws  -> [FfiGem]
@@ -610,6 +612,14 @@ open func getGem(id: String)throws  -> FfiGem?  {
     return try  FfiConverterOptionTypeFfiGem.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_get_gem(self.uniffiClonePointer(),
         FfiConverterString.lower(id),$0
+    )
+})
+}
+    
+open func getTrackPoints(tripId: String)throws  -> [FfiTrackPoint]  {
+    return try  FfiConverterSequenceTypeFfiTrackPoint.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_get_track_points(self.uniffiClonePointer(),
+        FfiConverterString.lower(tripId),$0
     )
 })
 }
@@ -1512,14 +1522,11 @@ extension FfiError: Foundation.LocalizedError {
 
 public enum FfiGemType {
     
-    case campsite
     case water
-    case hazard
-    case viewpoint
-    case trailhead
-    case junction
-    case resupply
-    case note
+    case camp
+    case beauty
+    case service
+    case custom
 }
 
 
@@ -1537,21 +1544,15 @@ public struct FfiConverterTypeFfiGemType: FfiConverterRustBuffer {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
-        case 1: return .campsite
+        case 1: return .water
         
-        case 2: return .water
+        case 2: return .camp
         
-        case 3: return .hazard
+        case 3: return .beauty
         
-        case 4: return .viewpoint
+        case 4: return .service
         
-        case 5: return .trailhead
-        
-        case 6: return .junction
-        
-        case 7: return .resupply
-        
-        case 8: return .note
+        case 5: return .custom
         
         default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -1561,36 +1562,24 @@ public struct FfiConverterTypeFfiGemType: FfiConverterRustBuffer {
         switch value {
         
         
-        case .campsite:
+        case .water:
             writeInt(&buf, Int32(1))
         
         
-        case .water:
+        case .camp:
             writeInt(&buf, Int32(2))
         
         
-        case .hazard:
+        case .beauty:
             writeInt(&buf, Int32(3))
         
         
-        case .viewpoint:
+        case .service:
             writeInt(&buf, Int32(4))
         
         
-        case .trailhead:
+        case .custom:
             writeInt(&buf, Int32(5))
-        
-        
-        case .junction:
-            writeInt(&buf, Int32(6))
-        
-        
-        case .resupply:
-            writeInt(&buf, Int32(7))
-        
-        
-        case .note:
-            writeInt(&buf, Int32(8))
         
         }
     }
@@ -1836,6 +1825,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_get_gem() != 6939) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_get_track_points() != 27836) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_import_gpx() != 16505) {
