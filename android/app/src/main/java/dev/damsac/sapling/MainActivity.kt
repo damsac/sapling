@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SaplingScreen(dbPath: String) {
+    val core = remember { SaplingCore(dbPath) }
     var statusText by remember { mutableStateOf("Ready") }
     var gemCount by remember { mutableIntStateOf(0) }
 
@@ -67,7 +68,6 @@ fun SaplingScreen(dbPath: String) {
 
         Button(onClick = {
             try {
-                val core = SaplingCore(dbPath)
                 val gem = core.createGem(
                     FfiCreateGemInput(
                         gemType = FfiGemType.VIEWPOINT,
