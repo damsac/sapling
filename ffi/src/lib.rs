@@ -248,7 +248,10 @@ impl SaplingCore {
         Ok(id)
     }
 
-    pub fn add_location(&self, point: FfiTrackPoint) -> Result<Option<FfiRecordingUpdate>, FfiError> {
+    pub fn add_location(
+        &self,
+        point: FfiTrackPoint,
+    ) -> Result<Option<FfiRecordingUpdate>, FfiError> {
         let core_point: TrackPoint = point.into();
         // Lock recorder, process point, unlock before touching store
         let (update, trip_id, accepted_point) = {
@@ -261,7 +264,10 @@ impl SaplingCore {
         // Persist accepted points to store
         if update.is_some() {
             if let Some(tid) = &trip_id {
-                self.store.lock().unwrap().add_track_point(tid, &accepted_point)?;
+                self.store
+                    .lock()
+                    .unwrap()
+                    .add_track_point(tid, &accepted_point)?;
             }
         }
         Ok(update.map(|u| u.into()))
@@ -299,12 +305,7 @@ impl SaplingCore {
     }
 
     pub fn get_gem(&self, id: String) -> Result<Option<FfiGem>, FfiError> {
-        Ok(self
-            .store
-            .lock()
-            .unwrap()
-            .get_gem(&id)?
-            .map(|g| g.into()))
+        Ok(self.store.lock().unwrap().get_gem(&id)?.map(|g| g.into()))
     }
 
     pub fn search_gems(&self, query: String) -> Result<Vec<FfiGem>, FfiError> {

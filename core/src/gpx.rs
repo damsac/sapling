@@ -20,8 +20,7 @@ fn parse_gpx_data(gpx_data: &gpx::Gpx) -> (Vec<TrackPoint>, Vec<gpx::Waypoint>) 
                     .map(|t| {
                         let odt: time::OffsetDateTime = t.into();
                         // OffsetDateTime gives seconds + nanoseconds natively
-                        (odt.unix_timestamp() * 1000)
-                            + (odt.nanosecond() / 1_000_000) as i64
+                        (odt.unix_timestamp() * 1000) + (odt.nanosecond() / 1_000_000) as i64
                     })
                     .unwrap_or(0);
 
@@ -45,17 +44,13 @@ fn parse_gpx_data(gpx_data: &gpx::Gpx) -> (Vec<TrackPoint>, Vec<gpx::Waypoint>) 
 }
 
 /// Import a GPX file, returning parsed track points and raw waypoints.
-pub fn import_gpx(
-    file_path: &str,
-) -> Result<(Vec<TrackPoint>, Vec<gpx::Waypoint>), SaplingError> {
-    let file = File::open(file_path).map_err(|e| {
-        SaplingError::Io(format!("cannot open {file_path}: {e}"))
-    })?;
+pub fn import_gpx(file_path: &str) -> Result<(Vec<TrackPoint>, Vec<gpx::Waypoint>), SaplingError> {
+    let file = File::open(file_path)
+        .map_err(|e| SaplingError::Io(format!("cannot open {file_path}: {e}")))?;
     let reader = BufReader::new(file);
 
-    let gpx_data = gpx::read(reader).map_err(|e| {
-        SaplingError::GpxParse(format!("failed to parse GPX: {e}"))
-    })?;
+    let gpx_data = gpx::read(reader)
+        .map_err(|e| SaplingError::GpxParse(format!("failed to parse GPX: {e}")))?;
 
     Ok(parse_gpx_data(&gpx_data))
 }
@@ -66,9 +61,8 @@ pub fn import_gpx_from_str(
 ) -> Result<(Vec<TrackPoint>, Vec<gpx::Waypoint>), SaplingError> {
     let cursor = std::io::Cursor::new(xml);
 
-    let gpx_data = gpx::read(cursor).map_err(|e| {
-        SaplingError::GpxParse(format!("failed to parse GPX: {e}"))
-    })?;
+    let gpx_data = gpx::read(cursor)
+        .map_err(|e| SaplingError::GpxParse(format!("failed to parse GPX: {e}")))?;
 
     Ok(parse_gpx_data(&gpx_data))
 }

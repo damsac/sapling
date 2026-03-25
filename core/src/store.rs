@@ -108,9 +108,9 @@ impl Store {
             ),
         ]);
 
-        migrations.to_latest(&mut conn).map_err(|e| {
-            SaplingError::Database(format!("migration failed: {e}"))
-        })?;
+        migrations
+            .to_latest(&mut conn)
+            .map_err(|e| SaplingError::Database(format!("migration failed: {e}")))?;
 
         Ok(Store { conn })
     }
@@ -322,7 +322,7 @@ struct GemRow {
 fn gem_from_row(r: GemRow) -> Result<Gem, SaplingError> {
     let tags: Vec<String> = serde_json::from_str(&r.tags)
         .map_err(|e| SaplingError::Database(format!("bad tags JSON: {e}")))?;
-    let gem_type = GemType::from_str(&r.gem_type)?;
+    let gem_type: GemType = r.gem_type.parse()?;
 
     Ok(Gem {
         id: r.id,
@@ -510,16 +510,25 @@ mod tests {
         }
 
         // Finalize with computed stats
-        store.finalize_trip(trip_id, 222.0, 50.0, 10.0, 2000).unwrap();
+        store
+            .finalize_trip(trip_id, 222.0, 50.0, 10.0, 2000)
+            .unwrap();
 
         // Verify trip row
         let mut stmt = store.conn.prepare(
             "SELECT name, distance_m, elevation_gain, elevation_loss, duration_ms FROM trips WHERE id = ?1"
         ).unwrap();
-        let (name, dist, gain, loss, dur): (String, f64, f64, f64, i64) = stmt.query_row(
-            rusqlite::params![trip_id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
-        ).unwrap();
+        let (name, dist, gain, loss, dur): (String, f64, f64, f64, i64) = stmt
+            .query_row(rusqlite::params![trip_id], |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            })
+            .unwrap();
         assert_eq!(name, "Morning Hike");
         assert!((dist - 222.0).abs() < 0.01);
         assert!((gain - 50.0).abs() < 0.01);
@@ -527,11 +536,14 @@ mod tests {
         assert_eq!(dur, 2000);
 
         // Verify track points
-        let count: i64 = store.conn.query_row(
-            "SELECT COUNT(*) FROM track_points WHERE trip_id = ?1",
-            rusqlite::params![trip_id],
-            |row| row.get(0),
-        ).unwrap();
+        let count: i64 = store
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM track_points WHERE trip_id = ?1",
+                rusqlite::params![trip_id],
+                |row| row.get(0),
+            )
+            .unwrap();
         assert_eq!(count, 3);
 
         // Verify a specific track point

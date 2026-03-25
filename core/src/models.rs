@@ -69,8 +69,12 @@ impl GemType {
             GemType::Note => "note",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Result<Self, crate::error::SaplingError> {
+impl std::str::FromStr for GemType {
+    type Err = crate::error::SaplingError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "campsite" => Ok(GemType::Campsite),
             "water" => Ok(GemType::Water),
