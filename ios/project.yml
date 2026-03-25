@@ -10,6 +10,10 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+packages:
+  MapLibreSwiftUI:
+    url: https://github.com/maplibre/swiftui-dsl
+    from: "0.24.0"
 targets:
   Sapling:
     type: application
@@ -23,6 +27,10 @@ targets:
     dependencies:
       - framework: Frameworks/SaplingCore.xcframework
         embed: false
+      - package: MapLibreSwiftUI
+        product: MapLibreSwiftUI
+      - package: MapLibreSwiftUI
+        product: MapLibreSwiftDSL
     info:
       path: Info.plist
       properties:

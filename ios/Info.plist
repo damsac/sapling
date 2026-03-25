@@ -18,5 +18,7 @@
     <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
     <string>$(CURRENT_PROJECT_VERSION)</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Sapling uses your location to record your hiking trail and show your position on the map.</string>
 </dict>
 </plist>
