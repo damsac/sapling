@@ -270,6 +270,34 @@ impl Store {
         Ok(())
     }
 
+    /// Fetch all non-deleted track points for a trip, ordered by time.
+    pub fn get_track_points(&self, trip_id: &str) -> Result<Vec<TrackPoint>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT latitude, longitude, elevation, h_accuracy, v_accuracy, speed, course, timestamp_ms, baro_relative_altitude
+             FROM track_points WHERE trip_id = ?1 AND deleted_at IS NULL ORDER BY timestamp_ms ASC",
+        )?;
+
+        let rows = stmt.query_map(rusqlite::params![trip_id], |row| {
+            Ok(TrackPoint {
+                latitude: row.get(0)?,
+                longitude: row.get(1)?,
+                elevation: row.get(2)?,
+                h_accuracy: row.get(3)?,
+                v_accuracy: row.get(4)?,
+                speed: row.get(5)?,
+                course: row.get(6)?,
+                timestamp_ms: row.get(7)?,
+                baro_relative_altitude: row.get(8)?,
+            })
+        })?;
+
+        let mut points = Vec::new();
+        for row in rows {
+            points.push(row?);
+        }
+        Ok(points)
+    }
+
     /// Full-text search across gem title, notes, and tags.
     pub fn search_gems(&self, query: &str) -> Result<Vec<Gem>, SaplingError> {
         let mut stmt = self.conn.prepare(

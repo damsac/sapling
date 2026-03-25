@@ -516,6 +516,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func getGem(id: String) throws  -> FfiGem?
     
+    func getTrackPoints(tripId: String) throws  -> [FfiTrackPoint]
+    
     func importGpx(filePath: String) throws  -> [FfiTrackPoint]
     
     func listGems() throws  -> [FfiGem]
@@ -610,6 +612,14 @@ open func getGem(id: String)throws  -> FfiGem?  {
     return try  FfiConverterOptionTypeFfiGem.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_get_gem(self.uniffiClonePointer(),
         FfiConverterString.lower(id),$0
+    )
+})
+}
+    
+open func getTrackPoints(tripId: String)throws  -> [FfiTrackPoint]  {
+    return try  FfiConverterSequenceTypeFfiTrackPoint.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_get_track_points(self.uniffiClonePointer(),
+        FfiConverterString.lower(tripId),$0
     )
 })
 }
@@ -1836,6 +1846,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_get_gem() != 6939) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_get_track_points() != 27836) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_import_gpx() != 16505) {

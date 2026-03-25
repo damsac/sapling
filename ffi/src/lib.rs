@@ -330,6 +330,29 @@ impl SaplingCore {
             .collect())
     }
 
+    // -- Track points --
+
+    pub fn get_track_points(&self, trip_id: String) -> Result<Vec<FfiTrackPoint>, FfiError> {
+        Ok(self
+            .store
+            .lock()
+            .unwrap()
+            .get_track_points(&trip_id)?
+            .into_iter()
+            .map(|p| FfiTrackPoint {
+                latitude: p.latitude,
+                longitude: p.longitude,
+                elevation: p.elevation,
+                h_accuracy: p.h_accuracy,
+                v_accuracy: p.v_accuracy,
+                speed: p.speed,
+                course: p.course,
+                timestamp_ms: p.timestamp_ms,
+                baro_relative_altitude: p.baro_relative_altitude,
+            })
+            .collect())
+    }
+
     // -- GPX Import --
 
     pub fn import_gpx(&self, file_path: String) -> Result<Vec<FfiTrackPoint>, FfiError> {
