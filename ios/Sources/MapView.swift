@@ -86,16 +86,15 @@ struct TrailMapView: View {
             AttributionButton()
                 .position(.bottomRight)
         }
-        .onLongPressMapGesture { context in
-            guard context.state == .began else { return }
-            onLongPress?(context.coordinate)
-        }
-        .onTapMapGesture(on: Set(gemLayerIDs)) { context, features in
-            guard !features.isEmpty else { return }
+        .onTapMapGesture(onTapChanged: { context in
             if let tappedGem = findNearestGem(to: context.coordinate) {
                 onGemTapped?(tappedGem)
             }
-        }
+        })
+        .onLongPressMapGesture(onPressChanged: { context in
+            guard context.state == .began else { return }
+            onLongPress?(context.coordinate)
+        })
         .onAppear {
             if userLocation != nil {
                 camera = .trackUserLocation(zoom: 15)
@@ -110,11 +109,6 @@ struct TrailMapView: View {
 
     private var styleURL: URL {
         URL(string: "https://tiles.openfreemap.org/styles/liberty")!
-    }
-
-    /// Layer IDs for tap gesture detection on gem circles.
-    private var gemLayerIDs: [String] {
-        ["gem-border", "gem-water", "gem-camp", "gem-beauty", "gem-service", "gem-custom"]
     }
 
     // MARK: - Gem Feature Helpers
@@ -162,8 +156,9 @@ struct TrailMapView: View {
             }
         }
 
-        // Only match within reasonable tap distance
-        if nearestDistance < 200 {
+        // Only match within reasonable tap distance (~50 m covers the visual
+        // circle radius at typical hiking-map zoom levels 13–17).
+        if nearestDistance < 50 {
             return nearest
         }
         return nil
