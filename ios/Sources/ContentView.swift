@@ -5,8 +5,10 @@ import MapLibre
 struct ContentView: View {
     @State private var viewModel: RecordingViewModel
     @State private var seedViewModel: SeedViewModel
+    @State private var tripListViewModel: TripListViewModel
     @State private var showBackgroundModal: Bool = false
     @State private var showOfflineSheet: Bool = false
+    @State private var showTripList: Bool = false
     @State private var visibleBounds: MLNCoordinateBounds?
     private var offlineManager = OfflineMapManager.shared
 
@@ -19,6 +21,7 @@ struct ContentView: View {
         let core = try! SaplingCore(dbPath: dbPath)
         _viewModel = State(initialValue: RecordingViewModel(core: core))
         _seedViewModel = State(initialValue: SeedViewModel(core: core))
+        _tripListViewModel = State(initialValue: TripListViewModel(core: core))
     }
 
     var body: some View {
@@ -54,10 +57,25 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
 
-            // Offline map button — top trailing
+            // Top bar buttons — trip list (leading) and offline map (trailing)
             VStack {
                 HStack {
+                    // Trip list button
+                    Button {
+                        tripListViewModel.loadTrips()
+                        showTripList = true
+                    } label: {
+                        Image(systemName: "list.bullet")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .frame(width: 40, height: 40)
+                            .background(.ultraThinMaterial, in: Circle())
+                    }
+                    .padding(.leading, 16)
+                    .padding(.top, 60)
+
                     Spacer()
+
                     OfflineMapButton(
                         packCount: offlineManager.packs.count,
                         action: { showOfflineSheet = true }
@@ -241,6 +259,10 @@ struct ContentView: View {
                 onDismiss: { showOfflineSheet = false }
             )
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showTripList) {
+            TripListView(viewModel: tripListViewModel)
+                .presentationDetents([.medium, .large])
         }
     }
 

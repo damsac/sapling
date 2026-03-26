@@ -514,13 +514,19 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func createSeed(input: FfiCreateSeedInput) throws  -> FfiSeed
     
+    func deleteTrip(id: String) throws 
+    
     func getSeed(id: String) throws  -> FfiSeed?
     
     func getTrackPoints(tripId: String) throws  -> [FfiTrackPoint]
     
+    func getTrip(id: String) throws  -> FfiTripSummary?
+    
     func importGpx(filePath: String) throws  -> [FfiTrackPoint]
     
     func listSeeds() throws  -> [FfiSeed]
+    
+    func listTrips() throws  -> [FfiTripSummary]
     
     func searchSeeds(query: String) throws  -> [FfiSeed]
     
@@ -608,6 +614,13 @@ open func createSeed(input: FfiCreateSeedInput)throws  -> FfiSeed  {
 })
 }
     
+open func deleteTrip(id: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_delete_trip(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
+}
+    
 open func getSeed(id: String)throws  -> FfiSeed?  {
     return try  FfiConverterOptionTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_get_seed(self.uniffiClonePointer(),
@@ -624,6 +637,14 @@ open func getTrackPoints(tripId: String)throws  -> [FfiTrackPoint]  {
 })
 }
     
+open func getTrip(id: String)throws  -> FfiTripSummary?  {
+    return try  FfiConverterOptionTypeFfiTripSummary.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_get_trip(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+})
+}
+    
 open func importGpx(filePath: String)throws  -> [FfiTrackPoint]  {
     return try  FfiConverterSequenceTypeFfiTrackPoint.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_import_gpx(self.uniffiClonePointer(),
@@ -635,6 +656,13 @@ open func importGpx(filePath: String)throws  -> [FfiTrackPoint]  {
 open func listSeeds()throws  -> [FfiSeed]  {
     return try  FfiConverterSequenceTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_list_seeds(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func listTrips()throws  -> [FfiTripSummary]  {
+    return try  FfiConverterSequenceTypeFfiTripSummary.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_list_trips(self.uniffiClonePointer(),$0
     )
 })
 }
@@ -1210,10 +1238,11 @@ public struct FfiTripSummary {
     public var durationMs: Int64
     public var seedCount: UInt32
     public var segmentCount: UInt32
+    public var createdAt: String
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, distanceM: Double, elevationGain: Double, elevationLoss: Double, durationMs: Int64, seedCount: UInt32, segmentCount: UInt32) {
+    public init(id: String, name: String, distanceM: Double, elevationGain: Double, elevationLoss: Double, durationMs: Int64, seedCount: UInt32, segmentCount: UInt32, createdAt: String) {
         self.id = id
         self.name = name
         self.distanceM = distanceM
@@ -1222,6 +1251,7 @@ public struct FfiTripSummary {
         self.durationMs = durationMs
         self.seedCount = seedCount
         self.segmentCount = segmentCount
+        self.createdAt = createdAt
     }
 }
 
@@ -1256,6 +1286,9 @@ extension FfiTripSummary: Equatable, Hashable {
         if lhs.segmentCount != rhs.segmentCount {
             return false
         }
+        if lhs.createdAt != rhs.createdAt {
+            return false
+        }
         return true
     }
 
@@ -1268,6 +1301,7 @@ extension FfiTripSummary: Equatable, Hashable {
         hasher.combine(durationMs)
         hasher.combine(seedCount)
         hasher.combine(segmentCount)
+        hasher.combine(createdAt)
     }
 }
 
@@ -1287,7 +1321,8 @@ public struct FfiConverterTypeFfiTripSummary: FfiConverterRustBuffer {
                 elevationLoss: FfiConverterDouble.read(from: &buf), 
                 durationMs: FfiConverterInt64.read(from: &buf), 
                 seedCount: FfiConverterUInt32.read(from: &buf), 
-                segmentCount: FfiConverterUInt32.read(from: &buf)
+                segmentCount: FfiConverterUInt32.read(from: &buf), 
+                createdAt: FfiConverterString.read(from: &buf)
         )
     }
 
@@ -1300,6 +1335,7 @@ public struct FfiConverterTypeFfiTripSummary: FfiConverterRustBuffer {
         FfiConverterInt64.write(value.durationMs, into: &buf)
         FfiConverterUInt32.write(value.seedCount, into: &buf)
         FfiConverterUInt32.write(value.segmentCount, into: &buf)
+        FfiConverterString.write(value.createdAt, into: &buf)
     }
 }
 
@@ -1803,6 +1839,31 @@ fileprivate struct FfiConverterSequenceTypeFfiTrackPoint: FfiConverterRustBuffer
     }
 }
 
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiTripSummary: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiTripSummary]
+
+    public static func write(_ value: [FfiTripSummary], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiTripSummary.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiTripSummary] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiTripSummary]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiTripSummary.read(from: &buf))
+        }
+        return seq
+    }
+}
+
 private enum InitializationResult {
     case ok
     case contractVersionMismatch
@@ -1824,16 +1885,25 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_create_seed() != 2323) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_delete_trip() != 51618) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_get_seed() != 50459) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_get_track_points() != 27836) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_get_trip() != 63953) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_import_gpx() != 16505) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_list_seeds() != 22673) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_list_trips() != 29418) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_search_seeds() != 34756) {

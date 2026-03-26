@@ -109,4 +109,5 @@ pub struct TripSummary {
     pub duration_ms: i64,
     pub seed_count: u32,
     pub segment_count: u32,
+    pub created_at: String,
 }

@@ -195,6 +195,7 @@ pub struct FfiTripSummary {
     pub duration_ms: i64,
     pub seed_count: u32,
     pub segment_count: u32,
+    pub created_at: String,
 }
 
 impl From<TripSummary> for FfiTripSummary {
@@ -208,6 +209,7 @@ impl From<TripSummary> for FfiTripSummary {
             duration_ms: s.duration_ms,
             seed_count: s.seed_count,
             segment_count: s.segment_count,
+            created_at: s.created_at,
         }
     }
 }
@@ -342,6 +344,28 @@ impl SaplingCore {
                 baro_relative_altitude: p.baro_relative_altitude,
             })
             .collect())
+    }
+
+    // -- Trips --
+
+    pub fn list_trips(&self) -> Result<Vec<FfiTripSummary>, FfiError> {
+        Ok(self
+            .store
+            .lock()
+            .unwrap()
+            .list_trips()?
+            .into_iter()
+            .map(|t| t.into())
+            .collect())
+    }
+
+    pub fn get_trip(&self, id: String) -> Result<Option<FfiTripSummary>, FfiError> {
+        Ok(self.store.lock().unwrap().get_trip(&id)?.map(|t| t.into()))
+    }
+
+    pub fn delete_trip(&self, id: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().delete_trip(&id)?;
+        Ok(())
     }
 
     // -- GPX Import --

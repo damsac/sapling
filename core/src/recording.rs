@@ -145,6 +145,7 @@ impl Recorder {
             duration_ms,
             seed_count: 0,
             segment_count: 1,
+            created_at: chrono::Utc::now().to_rfc3339(),
         })
     }
 

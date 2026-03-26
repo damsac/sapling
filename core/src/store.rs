@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use rusqlite_migration::{Migrations, M};
 
 use crate::error::SaplingError;
-use crate::models::{CreateSeedInput, Seed, SeedType, TrackPoint};
+use crate::models::{CreateSeedInput, Seed, SeedType, TrackPoint, TripSummary};
 
 /// SQLite-backed persistent store.
 pub struct Store {
@@ -296,6 +296,76 @@ impl Store {
             points.push(row?);
         }
         Ok(points)
+    }
+
+    // -- Trip queries --
+
+    /// List all finalized, non-deleted trips, most recent first.
+    pub fn list_trips(&self) -> Result<Vec<TripSummary>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at
+             FROM trips
+             WHERE deleted_at IS NULL AND duration_ms > 0
+             ORDER BY created_at DESC",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok(TripSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                distance_m: row.get(2)?,
+                elevation_gain: row.get(3)?,
+                elevation_loss: row.get(4)?,
+                duration_ms: row.get(5)?,
+                seed_count: 0,
+                segment_count: 0,
+                created_at: row.get(6)?,
+            })
+        })?;
+
+        let mut trips = Vec::new();
+        for row in rows {
+            trips.push(row?);
+        }
+        Ok(trips)
+    }
+
+    /// Fetch a single trip by ID, or None if not found (ignores soft-deleted).
+    pub fn get_trip(&self, id: &str) -> Result<Option<TripSummary>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at
+             FROM trips
+             WHERE id = ?1 AND deleted_at IS NULL",
+        )?;
+
+        let mut rows = stmt.query_map(rusqlite::params![id], |row| {
+            Ok(TripSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                distance_m: row.get(2)?,
+                elevation_gain: row.get(3)?,
+                elevation_loss: row.get(4)?,
+                duration_ms: row.get(5)?,
+                seed_count: 0,
+                segment_count: 0,
+                created_at: row.get(6)?,
+            })
+        })?;
+
+        match rows.next() {
+            Some(row) => Ok(Some(row?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Soft-delete a trip by setting its `deleted_at` timestamp.
+    pub fn delete_trip(&self, id: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE trips SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, id],
+        )?;
+        Ok(())
     }
 
     /// Full-text search across seed title, notes, and tags.

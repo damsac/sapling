@@ -276,6 +276,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_add_location(void*_Nonnull ptr, 
 RustBuffer uniffi_sapling_fn_method_saplingcore_create_seed(void*_Nonnull ptr, RustBuffer input, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_DELETE_TRIP
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_DELETE_TRIP
+void uniffi_sapling_fn_method_saplingcore_delete_trip(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_GET_SEED
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_GET_SEED
 RustBuffer uniffi_sapling_fn_method_saplingcore_get_seed(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
@@ -286,6 +291,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_get_seed(void*_Nonnull ptr, Rust
 RustBuffer uniffi_sapling_fn_method_saplingcore_get_track_points(void*_Nonnull ptr, RustBuffer trip_id, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_GET_TRIP
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_GET_TRIP
+RustBuffer uniffi_sapling_fn_method_saplingcore_get_trip(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_IMPORT_GPX
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_IMPORT_GPX
 RustBuffer uniffi_sapling_fn_method_saplingcore_import_gpx(void*_Nonnull ptr, RustBuffer file_path, RustCallStatus *_Nonnull out_status
@@ -294,6 +304,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_import_gpx(void*_Nonnull ptr, Ru
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_LIST_SEEDS
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_LIST_SEEDS
 RustBuffer uniffi_sapling_fn_method_saplingcore_list_seeds(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_LIST_TRIPS
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_LIST_TRIPS
+RustBuffer uniffi_sapling_fn_method_saplingcore_list_trips(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_SEARCH_SEEDS
@@ -603,6 +618,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_create_seed(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_DELETE_TRIP
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_DELETE_TRIP
+uint16_t uniffi_sapling_checksum_method_saplingcore_delete_trip(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_SEED
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_SEED
 uint16_t uniffi_sapling_checksum_method_saplingcore_get_seed(void
@@ -615,6 +636,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_get_track_points(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_TRIP
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_GET_TRIP
+uint16_t uniffi_sapling_checksum_method_saplingcore_get_trip(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_IMPORT_GPX
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_IMPORT_GPX
 uint16_t uniffi_sapling_checksum_method_saplingcore_import_gpx(void
@@ -624,6 +651,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_import_gpx(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_LIST_SEEDS
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_LIST_SEEDS
 uint16_t uniffi_sapling_checksum_method_saplingcore_list_seeds(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_LIST_TRIPS
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_LIST_TRIPS
+uint16_t uniffi_sapling_checksum_method_saplingcore_list_trips(void
     
 );
 #endif
