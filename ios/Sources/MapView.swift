@@ -17,6 +17,9 @@ struct TrailMapView: View {
     var onPendingSeedConfirm: (() -> Void)? = nil
     var onPendingSeedCancel: (() -> Void)? = nil
 
+    /// Callback providing the approximate visible bounding box when the camera changes.
+    var onVisibleBoundsChanged: ((MLNCoordinateBounds) -> Void)? = nil
+
     @State private var camera: MapViewCamera = .center(
         CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         zoom: 14
@@ -120,12 +123,22 @@ struct TrailMapView: View {
                         camera = .center(coordinate, zoom: 15)
                         hasInitiallyNavigated = true
                     }
+                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
                 }
                 .onChange(of: userLocation?.coordinate.latitude) { _, _ in
                     if let coordinate = userLocation?.coordinate, !hasInitiallyNavigated {
                         camera = .center(coordinate, zoom: 15)
                         hasInitiallyNavigated = true
                     }
+                }
+                .onChange(of: cameraCenter.latitude) { _, _ in
+                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
+                }
+                .onChange(of: cameraCenter.longitude) { _, _ in
+                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
+                }
+                .onChange(of: currentZoom) { _, _ in
+                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
                 }
 
                 // MARK: - Pending Seed Overlay
@@ -235,6 +248,15 @@ struct TrailMapView: View {
 
     private var styleURL: URL {
         URL(string: "https://tiles.openfreemap.org/styles/liberty")!
+    }
+
+    // MARK: - Visible Bounds
+
+    /// Compute the approximate bounding box of the visible map area.
+    private func visibleBounds(in size: CGSize) -> MLNCoordinateBounds {
+        let sw = screenToCoordinate(CGPoint(x: 0, y: size.height), in: size)
+        let ne = screenToCoordinate(CGPoint(x: size.width, y: 0), in: size)
+        return MLNCoordinateBounds(sw: sw, ne: ne)
     }
 
     // MARK: - Coordinate ↔ Screen Conversion

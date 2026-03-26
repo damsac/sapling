@@ -234,6 +234,14 @@ struct ContentView: View {
                 )
             }
         }
+        .sheet(isPresented: $showOfflineSheet) {
+            OfflineMapSheet(
+                manager: offlineManager,
+                visibleBounds: visibleBounds,
+                onDismiss: { showOfflineSheet = false }
+            )
+            .presentationDetents([.medium, .large])
+        }
     }
 
     // MARK: - Record Tap Authorization Check
