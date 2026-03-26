@@ -15,6 +15,7 @@ struct TrailMapView: View {
         CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         zoom: 14
     )
+    @State private var hasInitiallyNavigated = false
 
     var body: some View {
         MapView(styleURL: styleURL, camera: $camera) {
@@ -100,13 +101,17 @@ struct TrailMapView: View {
             onLongPress?(context.coordinate)
         })
         .onAppear {
-            if userLocation != nil {
-                camera = .trackUserLocation(zoom: 15)
+            if let coordinate = userLocation?.coordinate, !hasInitiallyNavigated {
+                camera = .center(coordinate, zoom: 15)
+                hasInitiallyNavigated = true
             }
         }
         .onChange(of: userLocation?.coordinate.latitude) { _, _ in
-            if userLocation != nil {
-                camera = .trackUserLocation(zoom: 15)
+            // Center on user location exactly once — when the first GPS fix arrives.
+            // After that, the user has full control of pan and zoom.
+            if let coordinate = userLocation?.coordinate, !hasInitiallyNavigated {
+                camera = .center(coordinate, zoom: 15)
+                hasInitiallyNavigated = true
             }
         }
     }
