@@ -1,14 +1,14 @@
 import SwiftUI
 
-struct GemTypePicker: View {
-    let onSelect: (FfiGemType) -> Void
+struct SeedTypePicker: View {
+    let onSelect: (FfiSeedType) -> Void
     let onCancel: () -> Void
 
     var body: some View {
         VStack(spacing: 20) {
             // Header with cancel
             HStack {
-                Text("Drop a Gem")
+                Text("Plant a Seed")
                     .font(.headline)
                     .foregroundStyle(.primary)
                 Spacer()
@@ -20,9 +20,9 @@ struct GemTypePicker: View {
             }
             .padding(.horizontal)
 
-            // Single row of 5 gem types
+            // Single row of 5 seed types
             HStack(spacing: 0) {
-                ForEach(allGemTypes, id: \.displayName) { type in
+                ForEach(allSeedTypes, id: \.displayName) { type in
                     Button {
                         onSelect(type)
                     } label: {

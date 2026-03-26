@@ -143,7 +143,7 @@ impl Recorder {
             elevation_gain: self.elevation_gain,
             elevation_loss: self.elevation_loss,
             duration_ms,
-            gem_count: 0,
+            seed_count: 0,
             segment_count: 1,
         })
     }

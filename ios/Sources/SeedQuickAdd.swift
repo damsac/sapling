@@ -1,8 +1,8 @@
 import CoreLocation
 import SwiftUI
 
-struct GemQuickAdd: View {
-    let gemType: FfiGemType
+struct SeedQuickAdd: View {
+    let seedType: FfiSeedType
     let coordinate: CLLocationCoordinate2D
     let onSave: (String, String?) -> Void
     let onCancel: () -> Void
@@ -16,15 +16,15 @@ struct GemQuickAdd: View {
         VStack(spacing: 16) {
             // Type badge
             HStack(spacing: 8) {
-                Image(systemName: gemType.sfSymbol)
+                Image(systemName: seedType.sfSymbol)
                     .font(.subheadline)
                     .foregroundStyle(.white)
                     .frame(width: 28, height: 28)
-                    .background(gemType.color, in: Circle())
+                    .background(seedType.color, in: Circle())
 
-                Text(gemType.displayName)
+                Text(seedType.displayName)
                     .font(.subheadline.weight(.medium))
-                    .foregroundStyle(gemType.color)
+                    .foregroundStyle(seedType.color)
 
                 Spacer()
 
@@ -35,7 +35,7 @@ struct GemQuickAdd: View {
             .padding(.horizontal)
 
             // Title field
-            TextField("Name this gem", text: $title)
+            TextField("Name this seed", text: $title)
                 .font(.title3.weight(.medium))
                 .textFieldStyle(.plain)
                 .padding(.horizontal)
@@ -79,18 +79,18 @@ struct GemQuickAdd: View {
             // Save button
             Button {
                 let trimmedTitle = title.trimmingCharacters(in: .whitespaces)
-                let finalTitle = trimmedTitle.isEmpty ? gemType.defaultTitle : trimmedTitle
+                let finalTitle = trimmedTitle.isEmpty ? seedType.defaultTitle : trimmedTitle
                 let finalNotes: String? = showNotes && !notes.trimmingCharacters(in: .whitespaces).isEmpty
                     ? notes.trimmingCharacters(in: .whitespaces)
                     : nil
                 onSave(finalTitle, finalNotes)
             } label: {
-                Text("Save Gem")
+                Text("Save Seed")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(gemType.color, in: RoundedRectangle(cornerRadius: 12))
+                    .background(seedType.color, in: RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal)
         }
@@ -98,7 +98,7 @@ struct GemQuickAdd: View {
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
         .onAppear {
-            title = gemType.defaultTitle
+            title = seedType.defaultTitle
             titleFocused = true
         }
     }

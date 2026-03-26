@@ -16,9 +16,9 @@ pub struct TrackPoint {
 
 /// A point of interest along a trail.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Gem {
+pub struct Seed {
     pub id: String,
-    pub gem_type: GemType,
+    pub seed_type: SeedType,
     pub title: String,
     pub notes: Option<String>,
     pub latitude: f64,
@@ -30,10 +30,10 @@ pub struct Gem {
     pub updated_at: String,
 }
 
-/// Input for creating a new Gem (no id or timestamps — those are generated).
+/// Input for creating a new Seed (no id or timestamps — those are generated).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateGemInput {
-    pub gem_type: GemType,
+pub struct CreateSeedInput {
+    pub seed_type: SeedType,
     pub title: String,
     pub notes: Option<String>,
     pub latitude: f64,
@@ -43,9 +43,9 @@ pub struct CreateGemInput {
     pub tags: Vec<String>,
 }
 
-/// The type/category of a Gem.
+/// The type/category of a Seed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GemType {
+pub enum SeedType {
     Water,
     Camp,
     Beauty,
@@ -53,29 +53,29 @@ pub enum GemType {
     Custom,
 }
 
-impl GemType {
+impl SeedType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            GemType::Water => "water",
-            GemType::Camp => "camp",
-            GemType::Beauty => "beauty",
-            GemType::Service => "service",
-            GemType::Custom => "custom",
+            SeedType::Water => "water",
+            SeedType::Camp => "camp",
+            SeedType::Beauty => "beauty",
+            SeedType::Service => "service",
+            SeedType::Custom => "custom",
         }
     }
 }
 
-impl std::str::FromStr for GemType {
+impl std::str::FromStr for SeedType {
     type Err = crate::error::SaplingError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "water" => Ok(GemType::Water),
-            "camp" => Ok(GemType::Camp),
-            "beauty" => Ok(GemType::Beauty),
-            "service" => Ok(GemType::Service),
-            "custom" => Ok(GemType::Custom),
-            _other => Ok(GemType::Custom), // Unknown types fall back to Custom for forward compatibility
+            "water" => Ok(SeedType::Water),
+            "camp" => Ok(SeedType::Camp),
+            "beauty" => Ok(SeedType::Beauty),
+            "service" => Ok(SeedType::Service),
+            "custom" => Ok(SeedType::Custom),
+            _other => Ok(SeedType::Custom), // Unknown types fall back to Custom for forward compatibility
         }
     }
 }
@@ -107,6 +107,6 @@ pub struct TripSummary {
     pub elevation_gain: f64,
     pub elevation_loss: f64,
     pub duration_ms: i64,
-    pub gem_count: u32,
+    pub seed_count: u32,
     pub segment_count: u32,
 }

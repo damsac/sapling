@@ -1,8 +1,8 @@
 import SwiftUI
 
-// MARK: - Gem Type Display Properties
+// MARK: - Seed Type Display Properties
 
-extension FfiGemType {
+extension FfiSeedType {
     var displayName: String {
         switch self {
         case .water: "Water"
@@ -19,7 +19,7 @@ extension FfiGemType {
         case .camp: "Campsite"
         case .beauty: "Beautiful Spot"
         case .service: "Service Area"
-        case .custom: "Custom Gem"
+        case .custom: "Custom Seed"
         }
     }
 
@@ -54,7 +54,7 @@ extension FfiGemType {
     }
 }
 
-// MARK: - Gem Type Ordering
+// MARK: - Seed Type Ordering
 
-/// All gem types in display order.
-let allGemTypes: [FfiGemType] = [.water, .camp, .beauty, .service, .custom]
+/// All seed types in display order.
+let allSeedTypes: [FfiSeedType] = [.water, .camp, .beauty, .service, .custom]

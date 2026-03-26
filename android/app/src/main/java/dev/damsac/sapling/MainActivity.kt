@@ -35,7 +35,7 @@ class MainActivity : ComponentActivity() {
 fun SaplingScreen(dbPath: String) {
     val core = remember { SaplingCore(dbPath) }
     var statusText by remember { mutableStateOf("Ready") }
-    var gemCount by remember { mutableIntStateOf(0) }
+    var seedCount by remember { mutableIntStateOf(0) }
 
     Column(
         modifier = Modifier
@@ -60,7 +60,7 @@ fun SaplingScreen(dbPath: String) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Gems created: $gemCount",
+            text = "Seeds created: $seedCount",
             style = MaterialTheme.typography.titleMedium,
         )
 
@@ -68,10 +68,10 @@ fun SaplingScreen(dbPath: String) {
 
         Button(onClick = {
             try {
-                val gem = core.createGem(
-                    FfiCreateGemInput(
-                        gemType = FfiGemType.BEAUTY,
-                        title = "Test Beauty Spot #${gemCount + 1}",
+                val seed = core.createSeed(
+                    FfiCreateSeedInput(
+                        seedType = FfiSeedType.BEAUTY,
+                        title = "Test Beauty Spot #${seedCount + 1}",
                         notes = "Created from Android",
                         latitude = 37.7749,
                         longitude = -122.4194,
@@ -80,13 +80,13 @@ fun SaplingScreen(dbPath: String) {
                         tags = listOf("test", "android"),
                     )
                 )
-                gemCount++
-                statusText = "Created gem: ${gem.title}"
+                seedCount++
+                statusText = "Created seed: ${seed.title}"
             } catch (e: Exception) {
                 statusText = "Error: ${e.message}"
             }
         }) {
-            Text("Create Test Gem")
+            Text("Create Test Seed")
         }
 
         Spacer(modifier = Modifier.height(16.dp))

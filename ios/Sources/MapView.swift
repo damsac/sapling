@@ -7,9 +7,9 @@ import SwiftUI
 struct TrailMapView: View {
     let trackCoordinates: [CLLocationCoordinate2D]
     let userLocation: CLLocation?
-    let gems: [FfiGem]
+    let seeds: [FfiSeed]
     var onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
-    var onGemTapped: ((FfiGem) -> Void)? = nil
+    var onSeedTapped: ((FfiSeed) -> Void)? = nil
 
     @State private var camera: MapViewCamera = .center(
         CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
@@ -36,49 +36,49 @@ struct TrailMapView: View {
                 .lineCap(.round)
                 .lineJoin(.round)
 
-            // Gem markers — all gem points in one source, filtered by type per layer
-            let gemPoints = gemPointFeatures()
-            let gemSource = ShapeSource(identifier: "gems") {
-                gemPoints
+            // Seed markers — all seed points in one source, filtered by type per layer
+            let seedPoints = seedPointFeatures()
+            let seedSource = ShapeSource(identifier: "seeds") {
+                seedPoints
             }
 
-            // White border ring behind all gem dots
-            CircleStyleLayer(identifier: "gem-border", source: gemSource)
+            // White border ring behind all seed dots
+            CircleStyleLayer(identifier: "seed-border", source: seedSource)
                 .radius(14)
                 .color(.white)
                 .strokeWidth(0)
-                .predicate(NSPredicate(format: "gemType != nil"))
+                .predicate(NSPredicate(format: "seedType != nil"))
 
-            // One colored circle layer per gem type, filtered by predicate
-            CircleStyleLayer(identifier: "gem-water", source: gemSource)
+            // One colored circle layer per seed type, filtered by predicate
+            CircleStyleLayer(identifier: "seed-water", source: seedSource)
                 .radius(11)
-                .color(FfiGemType.water.uiColor)
+                .color(FfiSeedType.water.uiColor)
                 .strokeWidth(0)
-                .predicate(NSPredicate(format: "gemType == %@", "Water"))
+                .predicate(NSPredicate(format: "seedType == %@", "Water"))
 
-            CircleStyleLayer(identifier: "gem-camp", source: gemSource)
+            CircleStyleLayer(identifier: "seed-camp", source: seedSource)
                 .radius(11)
-                .color(FfiGemType.camp.uiColor)
+                .color(FfiSeedType.camp.uiColor)
                 .strokeWidth(0)
-                .predicate(NSPredicate(format: "gemType == %@", "Camp"))
+                .predicate(NSPredicate(format: "seedType == %@", "Camp"))
 
-            CircleStyleLayer(identifier: "gem-beauty", source: gemSource)
+            CircleStyleLayer(identifier: "seed-beauty", source: seedSource)
                 .radius(11)
-                .color(FfiGemType.beauty.uiColor)
+                .color(FfiSeedType.beauty.uiColor)
                 .strokeWidth(0)
-                .predicate(NSPredicate(format: "gemType == %@", "Beauty"))
+                .predicate(NSPredicate(format: "seedType == %@", "Beauty"))
 
-            CircleStyleLayer(identifier: "gem-service", source: gemSource)
+            CircleStyleLayer(identifier: "seed-service", source: seedSource)
                 .radius(11)
-                .color(FfiGemType.service.uiColor)
+                .color(FfiSeedType.service.uiColor)
                 .strokeWidth(0)
-                .predicate(NSPredicate(format: "gemType == %@", "Service"))
+                .predicate(NSPredicate(format: "seedType == %@", "Service"))
 
-            CircleStyleLayer(identifier: "gem-custom", source: gemSource)
+            CircleStyleLayer(identifier: "seed-custom", source: seedSource)
                 .radius(11)
-                .color(FfiGemType.custom.uiColor)
+                .color(FfiSeedType.custom.uiColor)
                 .strokeWidth(0)
-                .predicate(NSPredicate(format: "gemType == %@", "Custom"))
+                .predicate(NSPredicate(format: "seedType == %@", "Custom"))
         }
         .mapControls {
             CompassView()
@@ -92,8 +92,8 @@ struct TrailMapView: View {
                 at: context.coordinate,
                 zoom: currentZoom
             )
-            if let tappedGem = findNearestGem(to: context.coordinate, threshold: threshold) {
-                onGemTapped?(tappedGem)
+            if let tappedSeed = findNearestSeed(to: context.coordinate, threshold: threshold) {
+                onSeedTapped?(tappedSeed)
             }
         })
         .onLongPressMapGesture(onPressChanged: { context in
@@ -143,7 +143,7 @@ struct TrailMapView: View {
     /// Convert a screen-space tap radius (in points) to meters at the given
     /// coordinate and zoom level.
     ///
-    /// Gem circles render at a fixed pixel size (radius 11-14 pt) regardless
+    /// Seed circles render at a fixed pixel size (radius 11-14 pt) regardless
     /// of zoom. At wide zoom (10-12) the old fixed 50 m threshold covered
     /// only a few pixels — too small for a fingertip. This function scales
     /// the hit-test radius so it always matches the visual marker size.
@@ -153,7 +153,7 @@ struct TrailMapView: View {
     ///
     /// We use 22 pt (~half a fingertip) as the tap radius and clamp the
     /// result between 30 m (don't shrink below a reasonable minimum) and
-    /// 500 m (don't select gems across the whole screen at zoom 8).
+    /// 500 m (don't select seeds across the whole screen at zoom 8).
     private func tapThresholdMeters(
         at coordinate: CLLocationCoordinate2D,
         zoom: Double
@@ -164,51 +164,51 @@ struct TrailMapView: View {
         return min(max(metersPerPt * tapRadiusPts, 30), 500)
     }
 
-    // MARK: - Gem Feature Helpers
+    // MARK: - Seed Feature Helpers
 
-    /// Build an array of MLNPointFeature from the current gems list.
+    /// Build an array of MLNPointFeature from the current seeds list.
     /// Always returns at least one feature (a hidden placeholder) so the
     /// ShapeSource is never empty.
-    private func gemPointFeatures() -> [MLNPointFeature] {
-        if gems.isEmpty {
+    private func seedPointFeatures() -> [MLNPointFeature] {
+        if seeds.isEmpty {
             // Placeholder so ShapeSource has content
             let placeholder = MLNPointFeature()
             placeholder.coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
             return [placeholder]
         }
-        return gems.map { gem in
+        return seeds.map { seed in
             let feature = MLNPointFeature()
             feature.coordinate = CLLocationCoordinate2D(
-                latitude: gem.latitude,
-                longitude: gem.longitude
+                latitude: seed.latitude,
+                longitude: seed.longitude
             )
             feature.attributes = [
-                "id": gem.id,
-                "gemType": gem.gemType.displayName,
-                "title": gem.title,
+                "id": seed.id,
+                "seedType": seed.seedType.displayName,
+                "title": seed.title,
             ]
             return feature
         }
     }
 
-    /// Find the gem nearest to a tap coordinate within the given threshold.
-    private func findNearestGem(
+    /// Find the seed nearest to a tap coordinate within the given threshold.
+    private func findNearestSeed(
         to coordinate: CLLocationCoordinate2D,
         threshold: CLLocationDistance
-    ) -> FfiGem? {
+    ) -> FfiSeed? {
         let tapLocation = CLLocation(
             latitude: coordinate.latitude,
             longitude: coordinate.longitude
         )
-        var nearest: FfiGem?
+        var nearest: FfiSeed?
         var nearestDistance: CLLocationDistance = .greatestFiniteMagnitude
 
-        for gem in gems {
-            let gemLocation = CLLocation(latitude: gem.latitude, longitude: gem.longitude)
-            let distance = tapLocation.distance(from: gemLocation)
+        for seed in seeds {
+            let seedLocation = CLLocation(latitude: seed.latitude, longitude: seed.longitude)
+            let distance = tapLocation.distance(from: seedLocation)
             if distance < nearestDistance {
                 nearestDistance = distance
-                nearest = gem
+                nearest = seed
             }
         }
 

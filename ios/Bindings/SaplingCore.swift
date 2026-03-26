@@ -512,17 +512,17 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func addLocation(point: FfiTrackPoint) throws  -> FfiRecordingUpdate?
     
-    func createGem(input: FfiCreateGemInput) throws  -> FfiGem
+    func createSeed(input: FfiCreateSeedInput) throws  -> FfiSeed
     
-    func getGem(id: String) throws  -> FfiGem?
+    func getSeed(id: String) throws  -> FfiSeed?
     
     func getTrackPoints(tripId: String) throws  -> [FfiTrackPoint]
     
     func importGpx(filePath: String) throws  -> [FfiTrackPoint]
     
-    func listGems() throws  -> [FfiGem]
+    func listSeeds() throws  -> [FfiSeed]
     
-    func searchGems(query: String) throws  -> [FfiGem]
+    func searchSeeds(query: String) throws  -> [FfiSeed]
     
     func startRecording(name: String?) throws  -> String
     
@@ -600,17 +600,17 @@ open func addLocation(point: FfiTrackPoint)throws  -> FfiRecordingUpdate?  {
 })
 }
     
-open func createGem(input: FfiCreateGemInput)throws  -> FfiGem  {
-    return try  FfiConverterTypeFfiGem_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
-    uniffi_sapling_fn_method_saplingcore_create_gem(self.uniffiClonePointer(),
-        FfiConverterTypeFfiCreateGemInput_lower(input),$0
+open func createSeed(input: FfiCreateSeedInput)throws  -> FfiSeed  {
+    return try  FfiConverterTypeFfiSeed_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_create_seed(self.uniffiClonePointer(),
+        FfiConverterTypeFfiCreateSeedInput_lower(input),$0
     )
 })
 }
     
-open func getGem(id: String)throws  -> FfiGem?  {
-    return try  FfiConverterOptionTypeFfiGem.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
-    uniffi_sapling_fn_method_saplingcore_get_gem(self.uniffiClonePointer(),
+open func getSeed(id: String)throws  -> FfiSeed?  {
+    return try  FfiConverterOptionTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_get_seed(self.uniffiClonePointer(),
         FfiConverterString.lower(id),$0
     )
 })
@@ -632,16 +632,16 @@ open func importGpx(filePath: String)throws  -> [FfiTrackPoint]  {
 })
 }
     
-open func listGems()throws  -> [FfiGem]  {
-    return try  FfiConverterSequenceTypeFfiGem.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
-    uniffi_sapling_fn_method_saplingcore_list_gems(self.uniffiClonePointer(),$0
+open func listSeeds()throws  -> [FfiSeed]  {
+    return try  FfiConverterSequenceTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_list_seeds(self.uniffiClonePointer(),$0
     )
 })
 }
     
-open func searchGems(query: String)throws  -> [FfiGem]  {
-    return try  FfiConverterSequenceTypeFfiGem.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
-    uniffi_sapling_fn_method_saplingcore_search_gems(self.uniffiClonePointer(),
+open func searchSeeds(query: String)throws  -> [FfiSeed]  {
+    return try  FfiConverterSequenceTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_search_seeds(self.uniffiClonePointer(),
         FfiConverterString.lower(query),$0
     )
 })
@@ -718,8 +718,8 @@ public func FfiConverterTypeSaplingCore_lower(_ value: SaplingCore) -> UnsafeMut
 
 
 
-public struct FfiCreateGemInput {
-    public var gemType: FfiGemType
+public struct FfiCreateSeedInput {
+    public var seedType: FfiSeedType
     public var title: String
     public var notes: String?
     public var latitude: Double
@@ -730,8 +730,8 @@ public struct FfiCreateGemInput {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(gemType: FfiGemType, title: String, notes: String?, latitude: Double, longitude: Double, elevation: Double?, confidence: UInt8, tags: [String]) {
-        self.gemType = gemType
+    public init(seedType: FfiSeedType, title: String, notes: String?, latitude: Double, longitude: Double, elevation: Double?, confidence: UInt8, tags: [String]) {
+        self.seedType = seedType
         self.title = title
         self.notes = notes
         self.latitude = latitude
@@ -743,13 +743,13 @@ public struct FfiCreateGemInput {
 }
 
 #if compiler(>=6)
-extension FfiCreateGemInput: Sendable {}
+extension FfiCreateSeedInput: Sendable {}
 #endif
 
 
-extension FfiCreateGemInput: Equatable, Hashable {
-    public static func ==(lhs: FfiCreateGemInput, rhs: FfiCreateGemInput) -> Bool {
-        if lhs.gemType != rhs.gemType {
+extension FfiCreateSeedInput: Equatable, Hashable {
+    public static func ==(lhs: FfiCreateSeedInput, rhs: FfiCreateSeedInput) -> Bool {
+        if lhs.seedType != rhs.seedType {
             return false
         }
         if lhs.title != rhs.title {
@@ -777,7 +777,7 @@ extension FfiCreateGemInput: Equatable, Hashable {
     }
 
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(gemType)
+        hasher.combine(seedType)
         hasher.combine(title)
         hasher.combine(notes)
         hasher.combine(latitude)
@@ -793,11 +793,11 @@ extension FfiCreateGemInput: Equatable, Hashable {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public struct FfiConverterTypeFfiCreateGemInput: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCreateGemInput {
+public struct FfiConverterTypeFfiCreateSeedInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiCreateSeedInput {
         return
-            try FfiCreateGemInput(
-                gemType: FfiConverterTypeFfiGemType.read(from: &buf), 
+            try FfiCreateSeedInput(
+                seedType: FfiConverterTypeFfiSeedType.read(from: &buf), 
                 title: FfiConverterString.read(from: &buf), 
                 notes: FfiConverterOptionString.read(from: &buf), 
                 latitude: FfiConverterDouble.read(from: &buf), 
@@ -808,8 +808,8 @@ public struct FfiConverterTypeFfiCreateGemInput: FfiConverterRustBuffer {
         )
     }
 
-    public static func write(_ value: FfiCreateGemInput, into buf: inout [UInt8]) {
-        FfiConverterTypeFfiGemType.write(value.gemType, into: &buf)
+    public static func write(_ value: FfiCreateSeedInput, into buf: inout [UInt8]) {
+        FfiConverterTypeFfiSeedType.write(value.seedType, into: &buf)
         FfiConverterString.write(value.title, into: &buf)
         FfiConverterOptionString.write(value.notes, into: &buf)
         FfiConverterDouble.write(value.latitude, into: &buf)
@@ -824,157 +824,15 @@ public struct FfiConverterTypeFfiCreateGemInput: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeFfiCreateGemInput_lift(_ buf: RustBuffer) throws -> FfiCreateGemInput {
-    return try FfiConverterTypeFfiCreateGemInput.lift(buf)
+public func FfiConverterTypeFfiCreateSeedInput_lift(_ buf: RustBuffer) throws -> FfiCreateSeedInput {
+    return try FfiConverterTypeFfiCreateSeedInput.lift(buf)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeFfiCreateGemInput_lower(_ value: FfiCreateGemInput) -> RustBuffer {
-    return FfiConverterTypeFfiCreateGemInput.lower(value)
-}
-
-
-public struct FfiGem {
-    public var id: String
-    public var gemType: FfiGemType
-    public var title: String
-    public var notes: String?
-    public var latitude: Double
-    public var longitude: Double
-    public var elevation: Double?
-    public var confidence: UInt8
-    public var tags: [String]
-    public var createdAt: String
-    public var updatedAt: String
-
-    // Default memberwise initializers are never public by default, so we
-    // declare one manually.
-    public init(id: String, gemType: FfiGemType, title: String, notes: String?, latitude: Double, longitude: Double, elevation: Double?, confidence: UInt8, tags: [String], createdAt: String, updatedAt: String) {
-        self.id = id
-        self.gemType = gemType
-        self.title = title
-        self.notes = notes
-        self.latitude = latitude
-        self.longitude = longitude
-        self.elevation = elevation
-        self.confidence = confidence
-        self.tags = tags
-        self.createdAt = createdAt
-        self.updatedAt = updatedAt
-    }
-}
-
-#if compiler(>=6)
-extension FfiGem: Sendable {}
-#endif
-
-
-extension FfiGem: Equatable, Hashable {
-    public static func ==(lhs: FfiGem, rhs: FfiGem) -> Bool {
-        if lhs.id != rhs.id {
-            return false
-        }
-        if lhs.gemType != rhs.gemType {
-            return false
-        }
-        if lhs.title != rhs.title {
-            return false
-        }
-        if lhs.notes != rhs.notes {
-            return false
-        }
-        if lhs.latitude != rhs.latitude {
-            return false
-        }
-        if lhs.longitude != rhs.longitude {
-            return false
-        }
-        if lhs.elevation != rhs.elevation {
-            return false
-        }
-        if lhs.confidence != rhs.confidence {
-            return false
-        }
-        if lhs.tags != rhs.tags {
-            return false
-        }
-        if lhs.createdAt != rhs.createdAt {
-            return false
-        }
-        if lhs.updatedAt != rhs.updatedAt {
-            return false
-        }
-        return true
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-        hasher.combine(gemType)
-        hasher.combine(title)
-        hasher.combine(notes)
-        hasher.combine(latitude)
-        hasher.combine(longitude)
-        hasher.combine(elevation)
-        hasher.combine(confidence)
-        hasher.combine(tags)
-        hasher.combine(createdAt)
-        hasher.combine(updatedAt)
-    }
-}
-
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public struct FfiConverterTypeFfiGem: FfiConverterRustBuffer {
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiGem {
-        return
-            try FfiGem(
-                id: FfiConverterString.read(from: &buf), 
-                gemType: FfiConverterTypeFfiGemType.read(from: &buf), 
-                title: FfiConverterString.read(from: &buf), 
-                notes: FfiConverterOptionString.read(from: &buf), 
-                latitude: FfiConverterDouble.read(from: &buf), 
-                longitude: FfiConverterDouble.read(from: &buf), 
-                elevation: FfiConverterOptionDouble.read(from: &buf), 
-                confidence: FfiConverterUInt8.read(from: &buf), 
-                tags: FfiConverterSequenceString.read(from: &buf), 
-                createdAt: FfiConverterString.read(from: &buf), 
-                updatedAt: FfiConverterString.read(from: &buf)
-        )
-    }
-
-    public static func write(_ value: FfiGem, into buf: inout [UInt8]) {
-        FfiConverterString.write(value.id, into: &buf)
-        FfiConverterTypeFfiGemType.write(value.gemType, into: &buf)
-        FfiConverterString.write(value.title, into: &buf)
-        FfiConverterOptionString.write(value.notes, into: &buf)
-        FfiConverterDouble.write(value.latitude, into: &buf)
-        FfiConverterDouble.write(value.longitude, into: &buf)
-        FfiConverterOptionDouble.write(value.elevation, into: &buf)
-        FfiConverterUInt8.write(value.confidence, into: &buf)
-        FfiConverterSequenceString.write(value.tags, into: &buf)
-        FfiConverterString.write(value.createdAt, into: &buf)
-        FfiConverterString.write(value.updatedAt, into: &buf)
-    }
-}
-
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeFfiGem_lift(_ buf: RustBuffer) throws -> FfiGem {
-    return try FfiConverterTypeFfiGem.lift(buf)
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
-public func FfiConverterTypeFfiGem_lower(_ value: FfiGem) -> RustBuffer {
-    return FfiConverterTypeFfiGem.lower(value)
+public func FfiConverterTypeFfiCreateSeedInput_lower(_ value: FfiCreateSeedInput) -> RustBuffer {
+    return FfiConverterTypeFfiCreateSeedInput.lower(value)
 }
 
 
@@ -1069,6 +927,148 @@ public func FfiConverterTypeFfiRecordingUpdate_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeFfiRecordingUpdate_lower(_ value: FfiRecordingUpdate) -> RustBuffer {
     return FfiConverterTypeFfiRecordingUpdate.lower(value)
+}
+
+
+public struct FfiSeed {
+    public var id: String
+    public var seedType: FfiSeedType
+    public var title: String
+    public var notes: String?
+    public var latitude: Double
+    public var longitude: Double
+    public var elevation: Double?
+    public var confidence: UInt8
+    public var tags: [String]
+    public var createdAt: String
+    public var updatedAt: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, seedType: FfiSeedType, title: String, notes: String?, latitude: Double, longitude: Double, elevation: Double?, confidence: UInt8, tags: [String], createdAt: String, updatedAt: String) {
+        self.id = id
+        self.seedType = seedType
+        self.title = title
+        self.notes = notes
+        self.latitude = latitude
+        self.longitude = longitude
+        self.elevation = elevation
+        self.confidence = confidence
+        self.tags = tags
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+#if compiler(>=6)
+extension FfiSeed: Sendable {}
+#endif
+
+
+extension FfiSeed: Equatable, Hashable {
+    public static func ==(lhs: FfiSeed, rhs: FfiSeed) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.seedType != rhs.seedType {
+            return false
+        }
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.notes != rhs.notes {
+            return false
+        }
+        if lhs.latitude != rhs.latitude {
+            return false
+        }
+        if lhs.longitude != rhs.longitude {
+            return false
+        }
+        if lhs.elevation != rhs.elevation {
+            return false
+        }
+        if lhs.confidence != rhs.confidence {
+            return false
+        }
+        if lhs.tags != rhs.tags {
+            return false
+        }
+        if lhs.createdAt != rhs.createdAt {
+            return false
+        }
+        if lhs.updatedAt != rhs.updatedAt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(seedType)
+        hasher.combine(title)
+        hasher.combine(notes)
+        hasher.combine(latitude)
+        hasher.combine(longitude)
+        hasher.combine(elevation)
+        hasher.combine(confidence)
+        hasher.combine(tags)
+        hasher.combine(createdAt)
+        hasher.combine(updatedAt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiSeed: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSeed {
+        return
+            try FfiSeed(
+                id: FfiConverterString.read(from: &buf), 
+                seedType: FfiConverterTypeFfiSeedType.read(from: &buf), 
+                title: FfiConverterString.read(from: &buf), 
+                notes: FfiConverterOptionString.read(from: &buf), 
+                latitude: FfiConverterDouble.read(from: &buf), 
+                longitude: FfiConverterDouble.read(from: &buf), 
+                elevation: FfiConverterOptionDouble.read(from: &buf), 
+                confidence: FfiConverterUInt8.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf), 
+                createdAt: FfiConverterString.read(from: &buf), 
+                updatedAt: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiSeed, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterTypeFfiSeedType.write(value.seedType, into: &buf)
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.notes, into: &buf)
+        FfiConverterDouble.write(value.latitude, into: &buf)
+        FfiConverterDouble.write(value.longitude, into: &buf)
+        FfiConverterOptionDouble.write(value.elevation, into: &buf)
+        FfiConverterUInt8.write(value.confidence, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+        FfiConverterString.write(value.createdAt, into: &buf)
+        FfiConverterString.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSeed_lift(_ buf: RustBuffer) throws -> FfiSeed {
+    return try FfiConverterTypeFfiSeed.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiSeed_lower(_ value: FfiSeed) -> RustBuffer {
+    return FfiConverterTypeFfiSeed.lower(value)
 }
 
 
@@ -1208,19 +1208,19 @@ public struct FfiTripSummary {
     public var elevationGain: Double
     public var elevationLoss: Double
     public var durationMs: Int64
-    public var gemCount: UInt32
+    public var seedCount: UInt32
     public var segmentCount: UInt32
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, distanceM: Double, elevationGain: Double, elevationLoss: Double, durationMs: Int64, gemCount: UInt32, segmentCount: UInt32) {
+    public init(id: String, name: String, distanceM: Double, elevationGain: Double, elevationLoss: Double, durationMs: Int64, seedCount: UInt32, segmentCount: UInt32) {
         self.id = id
         self.name = name
         self.distanceM = distanceM
         self.elevationGain = elevationGain
         self.elevationLoss = elevationLoss
         self.durationMs = durationMs
-        self.gemCount = gemCount
+        self.seedCount = seedCount
         self.segmentCount = segmentCount
     }
 }
@@ -1250,7 +1250,7 @@ extension FfiTripSummary: Equatable, Hashable {
         if lhs.durationMs != rhs.durationMs {
             return false
         }
-        if lhs.gemCount != rhs.gemCount {
+        if lhs.seedCount != rhs.seedCount {
             return false
         }
         if lhs.segmentCount != rhs.segmentCount {
@@ -1266,7 +1266,7 @@ extension FfiTripSummary: Equatable, Hashable {
         hasher.combine(elevationGain)
         hasher.combine(elevationLoss)
         hasher.combine(durationMs)
-        hasher.combine(gemCount)
+        hasher.combine(seedCount)
         hasher.combine(segmentCount)
     }
 }
@@ -1286,7 +1286,7 @@ public struct FfiConverterTypeFfiTripSummary: FfiConverterRustBuffer {
                 elevationGain: FfiConverterDouble.read(from: &buf), 
                 elevationLoss: FfiConverterDouble.read(from: &buf), 
                 durationMs: FfiConverterInt64.read(from: &buf), 
-                gemCount: FfiConverterUInt32.read(from: &buf), 
+                seedCount: FfiConverterUInt32.read(from: &buf), 
                 segmentCount: FfiConverterUInt32.read(from: &buf)
         )
     }
@@ -1298,7 +1298,7 @@ public struct FfiConverterTypeFfiTripSummary: FfiConverterRustBuffer {
         FfiConverterDouble.write(value.elevationGain, into: &buf)
         FfiConverterDouble.write(value.elevationLoss, into: &buf)
         FfiConverterInt64.write(value.durationMs, into: &buf)
-        FfiConverterUInt32.write(value.gemCount, into: &buf)
+        FfiConverterUInt32.write(value.seedCount, into: &buf)
         FfiConverterUInt32.write(value.segmentCount, into: &buf)
     }
 }
@@ -1517,10 +1517,10 @@ extension FfiError: Foundation.LocalizedError {
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
- * UniFFI enum types — typed alternatives to String for gem types and activity states.
+ * UniFFI enum types — typed alternatives to String for seed types and activity states.
  */
 
-public enum FfiGemType {
+public enum FfiSeedType {
     
     case water
     case camp
@@ -1531,16 +1531,16 @@ public enum FfiGemType {
 
 
 #if compiler(>=6)
-extension FfiGemType: Sendable {}
+extension FfiSeedType: Sendable {}
 #endif
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public struct FfiConverterTypeFfiGemType: FfiConverterRustBuffer {
-    typealias SwiftType = FfiGemType
+public struct FfiConverterTypeFfiSeedType: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSeedType
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiGemType {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiSeedType {
         let variant: Int32 = try readInt(&buf)
         switch variant {
         
@@ -1558,7 +1558,7 @@ public struct FfiConverterTypeFfiGemType: FfiConverterRustBuffer {
         }
     }
 
-    public static func write(_ value: FfiGemType, into buf: inout [UInt8]) {
+    public static func write(_ value: FfiSeedType, into buf: inout [UInt8]) {
         switch value {
         
         
@@ -1589,19 +1589,19 @@ public struct FfiConverterTypeFfiGemType: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeFfiGemType_lift(_ buf: RustBuffer) throws -> FfiGemType {
-    return try FfiConverterTypeFfiGemType.lift(buf)
+public func FfiConverterTypeFfiSeedType_lift(_ buf: RustBuffer) throws -> FfiSeedType {
+    return try FfiConverterTypeFfiSeedType.lift(buf)
 }
 
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-public func FfiConverterTypeFfiGemType_lower(_ value: FfiGemType) -> RustBuffer {
-    return FfiConverterTypeFfiGemType.lower(value)
+public func FfiConverterTypeFfiSeedType_lower(_ value: FfiSeedType) -> RustBuffer {
+    return FfiConverterTypeFfiSeedType.lower(value)
 }
 
 
-extension FfiGemType: Equatable, Hashable {}
+extension FfiSeedType: Equatable, Hashable {}
 
 
 
@@ -1659,30 +1659,6 @@ fileprivate struct FfiConverterOptionString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterOptionTypeFfiGem: FfiConverterRustBuffer {
-    typealias SwiftType = FfiGem?
-
-    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
-        guard let value = value else {
-            writeInt(&buf, Int8(0))
-            return
-        }
-        writeInt(&buf, Int8(1))
-        FfiConverterTypeFfiGem.write(value, into: &buf)
-    }
-
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
-        switch try readInt(&buf) as Int8 {
-        case 0: return nil
-        case 1: return try FfiConverterTypeFfiGem.read(from: &buf)
-        default: throw UniffiInternalError.unexpectedOptionalTag
-        }
-    }
-}
-
-#if swift(>=5.8)
-@_documentation(visibility: private)
-#endif
 fileprivate struct FfiConverterOptionTypeFfiRecordingUpdate: FfiConverterRustBuffer {
     typealias SwiftType = FfiRecordingUpdate?
 
@@ -1699,6 +1675,30 @@ fileprivate struct FfiConverterOptionTypeFfiRecordingUpdate: FfiConverterRustBuf
         switch try readInt(&buf) as Int8 {
         case 0: return nil
         case 1: return try FfiConverterTypeFfiRecordingUpdate.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterOptionTypeFfiSeed: FfiConverterRustBuffer {
+    typealias SwiftType = FfiSeed?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiSeed.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiSeed.read(from: &buf)
         default: throw UniffiInternalError.unexpectedOptionalTag
         }
     }
@@ -1756,23 +1756,23 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
-fileprivate struct FfiConverterSequenceTypeFfiGem: FfiConverterRustBuffer {
-    typealias SwiftType = [FfiGem]
+fileprivate struct FfiConverterSequenceTypeFfiSeed: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiSeed]
 
-    public static func write(_ value: [FfiGem], into buf: inout [UInt8]) {
+    public static func write(_ value: [FfiSeed], into buf: inout [UInt8]) {
         let len = Int32(value.count)
         writeInt(&buf, len)
         for item in value {
-            FfiConverterTypeFfiGem.write(item, into: &buf)
+            FfiConverterTypeFfiSeed.write(item, into: &buf)
         }
     }
 
-    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiGem] {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiSeed] {
         let len: Int32 = try readInt(&buf)
-        var seq = [FfiGem]()
+        var seq = [FfiSeed]()
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
-            seq.append(try FfiConverterTypeFfiGem.read(from: &buf))
+            seq.append(try FfiConverterTypeFfiSeed.read(from: &buf))
         }
         return seq
     }
@@ -1821,10 +1821,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_add_location() != 4440) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sapling_checksum_method_saplingcore_create_gem() != 16820) {
+    if (uniffi_sapling_checksum_method_saplingcore_create_seed() != 2323) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sapling_checksum_method_saplingcore_get_gem() != 6939) {
+    if (uniffi_sapling_checksum_method_saplingcore_get_seed() != 50459) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_get_track_points() != 27836) {
@@ -1833,10 +1833,10 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_import_gpx() != 16505) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sapling_checksum_method_saplingcore_list_gems() != 4708) {
+    if (uniffi_sapling_checksum_method_saplingcore_list_seeds() != 22673) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_sapling_checksum_method_saplingcore_search_gems() != 48905) {
+    if (uniffi_sapling_checksum_method_saplingcore_search_seeds() != 34756) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_start_recording() != 46456) {

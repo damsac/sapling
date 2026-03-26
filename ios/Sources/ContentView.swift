@@ -3,7 +3,7 @@ import CoreLocation
 
 struct ContentView: View {
     @State private var viewModel: RecordingViewModel
-    @State private var gemViewModel: GemViewModel
+    @State private var seedViewModel: SeedViewModel
     @State private var showBackgroundModal: Bool = false
 
     init() {
@@ -14,21 +14,21 @@ struct ContentView: View {
         let dbPath = documentsDir.appendingPathComponent("sapling.db").path
         let core = try! SaplingCore(dbPath: dbPath)
         _viewModel = State(initialValue: RecordingViewModel(core: core))
-        _gemViewModel = State(initialValue: GemViewModel(core: core))
+        _seedViewModel = State(initialValue: SeedViewModel(core: core))
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Full-screen map with gem markers and gestures
+            // Full-screen map with seed markers and gestures
             TrailMapView(
                 trackCoordinates: viewModel.trackCoordinates,
                 userLocation: viewModel.currentLocation,
-                gems: gemViewModel.gems,
+                seeds: seedViewModel.seeds,
                 onLongPress: { coordinate in
-                    gemViewModel.startGemCreation(at: coordinate)
+                    seedViewModel.startSeedCreation(at: coordinate)
                 },
-                onGemTapped: { gem in
-                    gemViewModel.selectGem(gem)
+                onSeedTapped: { seed in
+                    seedViewModel.selectSeed(seed)
                 }
             )
             .ignoresSafeArea()
@@ -72,53 +72,53 @@ struct ContentView: View {
 
                 Spacer()
 
-                // Gem creation sheets (anchored to bottom)
-                if gemViewModel.isShowingTypePicker {
-                    GemTypePicker(
+                // Seed creation sheets (anchored to bottom)
+                if seedViewModel.isShowingTypePicker {
+                    SeedTypePicker(
                         onSelect: { type in
-                            gemViewModel.selectType(type)
+                            seedViewModel.selectType(type)
                         },
                         onCancel: {
-                            gemViewModel.cancelCreation()
+                            seedViewModel.cancelCreation()
                         }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
                 }
 
-                if gemViewModel.isShowingQuickAdd,
-                   let type = gemViewModel.pendingGemType,
-                   let coord = gemViewModel.pendingGemCoordinate
+                if seedViewModel.isShowingQuickAdd,
+                   let type = seedViewModel.pendingSeedType,
+                   let coord = seedViewModel.pendingSeedCoordinate
                 {
-                    GemQuickAdd(
-                        gemType: type,
+                    SeedQuickAdd(
+                        seedType: type,
                         coordinate: coord,
                         onSave: { title, notes in
-                            gemViewModel.saveGem(title: title, notes: notes)
+                            seedViewModel.saveSeed(title: title, notes: notes)
                         },
                         onCancel: {
-                            gemViewModel.cancelCreation()
+                            seedViewModel.cancelCreation()
                         }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
                 }
 
-                if gemViewModel.isShowingDetail, let gem = gemViewModel.selectedGem {
-                    GemDetailSheet(
-                        gem: gem,
+                if seedViewModel.isShowingDetail, let seed = seedViewModel.selectedSeed {
+                    SeedDetailSheet(
+                        seed: seed,
                         onDismiss: {
-                            gemViewModel.dismissDetail()
+                            seedViewModel.dismissDetail()
                         }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
                 }
 
-                // Record / stop button at bottom (hidden during gem sheets)
-                if !gemViewModel.isShowingTypePicker
-                    && !gemViewModel.isShowingQuickAdd
-                    && !gemViewModel.isShowingDetail
+                // Record / stop button at bottom (hidden during seed sheets)
+                if !seedViewModel.isShowingTypePicker
+                    && !seedViewModel.isShowingQuickAdd
+                    && !seedViewModel.isShowingDetail
                 {
                     Button {
                         if viewModel.isRecording {
@@ -139,9 +139,9 @@ struct ContentView: View {
                     .padding(.bottom, 40)
                 }
             }
-            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingTypePicker)
-            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingQuickAdd)
-            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingDetail)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingTypePicker)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingQuickAdd)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingDetail)
 
             // Background location permission modal
             if showBackgroundModal {

@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use sapling_core::error::SaplingError;
 use sapling_core::models::{
-    ActivityState, CreateGemInput, Gem, GemType, RecordingUpdate, TrackPoint, TripSummary,
+    ActivityState, CreateSeedInput, RecordingUpdate, Seed, SeedType, TrackPoint, TripSummary,
 };
 use sapling_core::recording::Recorder;
 use sapling_core::store::Store;
@@ -36,10 +36,10 @@ impl From<SaplingError> for FfiError {
     }
 }
 
-/// UniFFI enum types — typed alternatives to String for gem types and activity states.
+/// UniFFI enum types — typed alternatives to String for seed types and activity states.
 
 #[derive(uniffi::Enum)]
-pub enum FfiGemType {
+pub enum FfiSeedType {
     Water,
     Camp,
     Beauty,
@@ -47,26 +47,26 @@ pub enum FfiGemType {
     Custom,
 }
 
-impl From<GemType> for FfiGemType {
-    fn from(g: GemType) -> Self {
+impl From<SeedType> for FfiSeedType {
+    fn from(g: SeedType) -> Self {
         match g {
-            GemType::Water => FfiGemType::Water,
-            GemType::Camp => FfiGemType::Camp,
-            GemType::Beauty => FfiGemType::Beauty,
-            GemType::Service => FfiGemType::Service,
-            GemType::Custom => FfiGemType::Custom,
+            SeedType::Water => FfiSeedType::Water,
+            SeedType::Camp => FfiSeedType::Camp,
+            SeedType::Beauty => FfiSeedType::Beauty,
+            SeedType::Service => FfiSeedType::Service,
+            SeedType::Custom => FfiSeedType::Custom,
         }
     }
 }
 
-impl From<FfiGemType> for GemType {
-    fn from(g: FfiGemType) -> Self {
+impl From<FfiSeedType> for SeedType {
+    fn from(g: FfiSeedType) -> Self {
         match g {
-            FfiGemType::Water => GemType::Water,
-            FfiGemType::Camp => GemType::Camp,
-            FfiGemType::Beauty => GemType::Beauty,
-            FfiGemType::Service => GemType::Service,
-            FfiGemType::Custom => GemType::Custom,
+            FfiSeedType::Water => SeedType::Water,
+            FfiSeedType::Camp => SeedType::Camp,
+            FfiSeedType::Beauty => SeedType::Beauty,
+            FfiSeedType::Service => SeedType::Service,
+            FfiSeedType::Custom => SeedType::Custom,
         }
     }
 }
@@ -120,9 +120,9 @@ impl From<FfiTrackPoint> for TrackPoint {
 }
 
 #[derive(uniffi::Record)]
-pub struct FfiGem {
+pub struct FfiSeed {
     pub id: String,
-    pub gem_type: FfiGemType,
+    pub seed_type: FfiSeedType,
     pub title: String,
     pub notes: Option<String>,
     pub latitude: f64,
@@ -134,11 +134,11 @@ pub struct FfiGem {
     pub updated_at: String,
 }
 
-impl From<Gem> for FfiGem {
-    fn from(g: Gem) -> Self {
-        FfiGem {
+impl From<Seed> for FfiSeed {
+    fn from(g: Seed) -> Self {
+        FfiSeed {
             id: g.id,
-            gem_type: g.gem_type.into(),
+            seed_type: g.seed_type.into(),
             title: g.title,
             notes: g.notes,
             latitude: g.latitude,
@@ -153,8 +153,8 @@ impl From<Gem> for FfiGem {
 }
 
 #[derive(uniffi::Record)]
-pub struct FfiCreateGemInput {
-    pub gem_type: FfiGemType,
+pub struct FfiCreateSeedInput {
+    pub seed_type: FfiSeedType,
     pub title: String,
     pub notes: Option<String>,
     pub latitude: f64,
@@ -193,7 +193,7 @@ pub struct FfiTripSummary {
     pub elevation_gain: f64,
     pub elevation_loss: f64,
     pub duration_ms: i64,
-    pub gem_count: u32,
+    pub seed_count: u32,
     pub segment_count: u32,
 }
 
@@ -206,7 +206,7 @@ impl From<TripSummary> for FfiTripSummary {
             elevation_gain: s.elevation_gain,
             elevation_loss: s.elevation_loss,
             duration_ms: s.duration_ms,
-            gem_count: s.gem_count,
+            seed_count: s.seed_count,
             segment_count: s.segment_count,
         }
     }
@@ -278,11 +278,11 @@ impl SaplingCore {
         Ok(summary.map(|s| s.into()))
     }
 
-    // -- Gems --
+    // -- Seeds --
 
-    pub fn create_gem(&self, input: FfiCreateGemInput) -> Result<FfiGem, FfiError> {
-        let core_input = CreateGemInput {
-            gem_type: input.gem_type.into(),
+    pub fn create_seed(&self, input: FfiCreateSeedInput) -> Result<FfiSeed, FfiError> {
+        let core_input = CreateSeedInput {
+            seed_type: input.seed_type.into(),
             title: input.title,
             notes: input.notes,
             latitude: input.latitude,
@@ -291,31 +291,31 @@ impl SaplingCore {
             confidence: input.confidence,
             tags: input.tags,
         };
-        let gem = self.store.lock().unwrap().create_gem(&core_input)?;
-        Ok(gem.into())
+        let seed = self.store.lock().unwrap().create_seed(&core_input)?;
+        Ok(seed.into())
     }
 
-    pub fn get_gem(&self, id: String) -> Result<Option<FfiGem>, FfiError> {
-        Ok(self.store.lock().unwrap().get_gem(&id)?.map(|g| g.into()))
+    pub fn get_seed(&self, id: String) -> Result<Option<FfiSeed>, FfiError> {
+        Ok(self.store.lock().unwrap().get_seed(&id)?.map(|g| g.into()))
     }
 
-    pub fn search_gems(&self, query: String) -> Result<Vec<FfiGem>, FfiError> {
+    pub fn search_seeds(&self, query: String) -> Result<Vec<FfiSeed>, FfiError> {
         Ok(self
             .store
             .lock()
             .unwrap()
-            .search_gems(&query)?
+            .search_seeds(&query)?
             .into_iter()
             .map(|g| g.into())
             .collect())
     }
 
-    pub fn list_gems(&self) -> Result<Vec<FfiGem>, FfiError> {
+    pub fn list_seeds(&self) -> Result<Vec<FfiSeed>, FfiError> {
         Ok(self
             .store
             .lock()
             .unwrap()
-            .list_gems()?
+            .list_seeds()?
             .into_iter()
             .map(|g| g.into())
             .collect())
