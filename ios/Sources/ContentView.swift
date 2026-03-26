@@ -29,6 +29,20 @@ struct ContentView: View {
                 },
                 onSeedTapped: { seed in
                     seedViewModel.selectSeed(seed)
+                },
+                pendingSeed: seedViewModel.pendingSeed,
+                onPendingSeedDrag: { coordinate in
+                    seedViewModel.updatePendingSeedPosition(coordinate)
+                },
+                onPendingSeedConfirm: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        seedViewModel.confirmPendingSeed()
+                    }
+                },
+                onPendingSeedCancel: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        seedViewModel.cancelPendingSeed()
+                    }
                 }
             )
             .ignoresSafeArea()
@@ -115,33 +129,51 @@ struct ContentView: View {
                     .padding(.bottom, 8)
                 }
 
-                // Record / stop button at bottom (hidden during seed sheets)
+                // Seed quick-drop bar + record/stop button (hidden during seed sheets)
                 if !seedViewModel.isShowingTypePicker
                     && !seedViewModel.isShowingQuickAdd
                     && !seedViewModel.isShowingDetail
                 {
-                    Button {
+                    VStack(spacing: 16) {
+                        // Quick-drop seed bar — only visible while recording
                         if viewModel.isRecording {
-                            viewModel.stopRecording()
-                        } else {
-                            handleRecordTap()
-                        }
-                    } label: {
-                        Circle()
-                            .fill(viewModel.isRecording ? .red : .green)
-                            .frame(width: 64, height: 64)
-                            .overlay {
-                                Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
-                                    .font(.title)
-                                    .foregroundStyle(.white)
+                            SeedQuickDropBar { type in
+                                guard let location = viewModel.currentLocation else { return }
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    seedViewModel.quickDropSeed(
+                                        type: type,
+                                        at: location.coordinate
+                                    )
+                                }
                             }
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
+                        Button {
+                            if viewModel.isRecording {
+                                viewModel.stopRecording()
+                            } else {
+                                handleRecordTap()
+                            }
+                        } label: {
+                            Circle()
+                                .fill(viewModel.isRecording ? .red : .green)
+                                .frame(width: 64, height: 64)
+                                .overlay {
+                                    Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
+                                        .font(.title)
+                                        .foregroundStyle(.white)
+                                }
+                        }
+                        .padding(.bottom, 40)
                     }
-                    .padding(.bottom, 40)
                 }
             }
             .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingTypePicker)
             .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingQuickAdd)
             .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingDetail)
+            .animation(.easeInOut(duration: 0.25), value: viewModel.isRecording)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.pendingSeed)
 
             // Background location permission modal
             if showBackgroundModal {
@@ -225,5 +257,46 @@ struct ContentView: View {
         } else {
             return String(format: "%d:%02d", minutes, seconds)
         }
+    }
+}
+
+// MARK: - Seed Quick-Drop Bar
+
+/// Horizontal row of 5 seed type buttons in a frosted glass pill.
+struct SeedQuickDropBar: View {
+    let onSelect: (FfiSeedType) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(allSeedTypes, id: \.displayName) { type in
+                Button {
+                    onSelect(type)
+                } label: {
+                    VStack(spacing: 4) {
+                        Circle()
+                            .fill(type.color)
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Image(systemName: type.sfSymbol)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white)
+                            }
+                            .overlay {
+                                Circle()
+                                    .stroke(.white, lineWidth: 2)
+                            }
+
+                        Text(type.displayName)
+                            .font(.caption2)
+                            .foregroundStyle(.primary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(.horizontal, 16)
     }
 }
