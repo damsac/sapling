@@ -1,10 +1,14 @@
 import SwiftUI
 import CoreLocation
+import MapLibre
 
 struct ContentView: View {
     @State private var viewModel: RecordingViewModel
     @State private var seedViewModel: SeedViewModel
     @State private var showBackgroundModal: Bool = false
+    @State private var showOfflineSheet: Bool = false
+    @State private var visibleBounds: MLNCoordinateBounds?
+    private var offlineManager = OfflineMapManager.shared
 
     init() {
         let documentsDir = FileManager.default.urls(
@@ -43,9 +47,26 @@ struct ContentView: View {
                     withAnimation(.easeOut(duration: 0.2)) {
                         seedViewModel.cancelPendingSeed()
                     }
+                },
+                onVisibleBoundsChanged: { bounds in
+                    visibleBounds = bounds
                 }
             )
             .ignoresSafeArea()
+
+            // Offline map button — top trailing
+            VStack {
+                HStack {
+                    Spacer()
+                    OfflineMapButton(
+                        packCount: offlineManager.packs.count,
+                        action: { showOfflineSheet = true }
+                    )
+                    .padding(.trailing, 16)
+                    .padding(.top, 60)
+                }
+                Spacer()
+            }
 
             // Recording controls overlay
             VStack {
@@ -199,6 +220,20 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showBackgroundModal)
+        .sheet(isPresented: Binding(
+            get: { viewModel.lastTripSummary != nil },
+            set: { if !$0 { viewModel.dismissTripSummary() } }
+        )) {
+            if let summary = viewModel.lastTripSummary {
+                TripSummarySheet(
+                    summary: summary,
+                    trackCoordinates: viewModel.lastTripTrack,
+                    onDismiss: {
+                        viewModel.dismissTripSummary()
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Record Tap Authorization Check
@@ -233,31 +268,6 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Formatters
-
-    private func formatDistance(_ meters: Double) -> String {
-        if meters < 1000 {
-            return String(format: "%.0f m", meters)
-        } else {
-            return String(format: "%.1f km", meters / 1000)
-        }
-    }
-
-    private func formatElevation(_ meters: Double) -> String {
-        String(format: "%.0f m", meters)
-    }
-
-    private func formatDuration(_ ms: Int64) -> String {
-        let totalSeconds = ms / 1000
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%d:%02d", minutes, seconds)
-        }
-    }
 }
 
 // MARK: - Seed Quick-Drop Bar
