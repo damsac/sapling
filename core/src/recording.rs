@@ -143,8 +143,9 @@ impl Recorder {
             elevation_gain: self.elevation_gain,
             elevation_loss: self.elevation_loss,
             duration_ms,
-            gem_count: 0,
+            seed_count: 0,
             segment_count: 1,
+            created_at: chrono::Utc::now().to_rfc3339(),
         })
     }
 

@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use rusqlite_migration::{Migrations, M};
 
 use crate::error::SaplingError;
-use crate::models::{CreateGemInput, Gem, GemType, TrackPoint};
+use crate::models::{CreateSeedInput, Seed, SeedType, TrackPoint, TripSummary};
 
 /// SQLite-backed persistent store.
 pub struct Store {
@@ -23,9 +23,9 @@ impl Store {
 
         let migrations = Migrations::new(vec![
             M::up(
-                "CREATE TABLE IF NOT EXISTS gems (
+                "CREATE TABLE IF NOT EXISTS seeds (
                     id          TEXT PRIMARY KEY NOT NULL,
-                    gem_type    TEXT NOT NULL,
+                    seed_type   TEXT NOT NULL,
                     title       TEXT NOT NULL,
                     notes       TEXT,
                     latitude    REAL NOT NULL,
@@ -39,24 +39,24 @@ impl Store {
                     deleted_at  TEXT
                 );
 
-                CREATE VIRTUAL TABLE IF NOT EXISTS gems_fts USING fts5(
-                    title, notes, tags, content='gems', content_rowid='rowid'
+                CREATE VIRTUAL TABLE IF NOT EXISTS seeds_fts USING fts5(
+                    title, notes, tags, content='seeds', content_rowid='rowid'
                 );
 
-                CREATE TRIGGER IF NOT EXISTS gems_ai AFTER INSERT ON gems BEGIN
-                    INSERT INTO gems_fts(rowid, title, notes, tags)
+                CREATE TRIGGER IF NOT EXISTS seeds_ai AFTER INSERT ON seeds BEGIN
+                    INSERT INTO seeds_fts(rowid, title, notes, tags)
                     VALUES (new.rowid, new.title, new.notes, new.tags);
                 END;
 
-                CREATE TRIGGER IF NOT EXISTS gems_ad AFTER DELETE ON gems BEGIN
-                    INSERT INTO gems_fts(gems_fts, rowid, title, notes, tags)
+                CREATE TRIGGER IF NOT EXISTS seeds_ad AFTER DELETE ON seeds BEGIN
+                    INSERT INTO seeds_fts(seeds_fts, rowid, title, notes, tags)
                     VALUES ('delete', old.rowid, old.title, old.notes, old.tags);
                 END;
 
-                CREATE TRIGGER IF NOT EXISTS gems_au AFTER UPDATE ON gems BEGIN
-                    INSERT INTO gems_fts(gems_fts, rowid, title, notes, tags)
+                CREATE TRIGGER IF NOT EXISTS seeds_au AFTER UPDATE ON seeds BEGIN
+                    INSERT INTO seeds_fts(seeds_fts, rowid, title, notes, tags)
                     VALUES ('delete', old.rowid, old.title, old.notes, old.tags);
-                    INSERT INTO gems_fts(rowid, title, notes, tags)
+                    INSERT INTO seeds_fts(rowid, title, notes, tags)
                     VALUES (new.rowid, new.title, new.notes, new.tags);
                 END;",
             ),
@@ -96,14 +96,14 @@ impl Store {
                 CREATE INDEX IF NOT EXISTS idx_track_points_trip
                     ON track_points(trip_id, segment_index, timestamp_ms);
 
-                CREATE TABLE IF NOT EXISTS trip_gems (
+                CREATE TABLE IF NOT EXISTS trip_seeds (
                     trip_id     TEXT NOT NULL REFERENCES trips(id),
-                    gem_id      TEXT NOT NULL REFERENCES gems(id),
+                    seed_id     TEXT NOT NULL REFERENCES seeds(id),
                     device_id   TEXT,
                     created_at  TEXT NOT NULL,
                     updated_at  TEXT NOT NULL,
                     deleted_at  TEXT,
-                    PRIMARY KEY (trip_id, gem_id)
+                    PRIMARY KEY (trip_id, seed_id)
                 );",
             ),
         ]);
@@ -115,19 +115,19 @@ impl Store {
         Ok(Store { conn })
     }
 
-    /// Create a new Gem and return it with generated id and timestamps.
-    pub fn create_gem(&self, input: &CreateGemInput) -> Result<Gem, SaplingError> {
+    /// Create a new Seed and return it with generated id and timestamps.
+    pub fn create_seed(&self, input: &CreateSeedInput) -> Result<Seed, SaplingError> {
         let id = uuid::Uuid::now_v7().to_string();
         let now = chrono::Utc::now().to_rfc3339();
         let tags_json = serde_json::to_string(&input.tags)
             .map_err(|e| SaplingError::InvalidInput(e.to_string()))?;
 
         self.conn.execute(
-            "INSERT INTO gems (id, gem_type, title, notes, latitude, longitude, elevation, confidence, tags, created_at, updated_at)
+            "INSERT INTO seeds (id, seed_type, title, notes, latitude, longitude, elevation, confidence, tags, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             rusqlite::params![
                 id,
-                input.gem_type.as_str(),
+                input.seed_type.as_str(),
                 input.title,
                 input.notes,
                 input.latitude,
@@ -140,9 +140,9 @@ impl Store {
             ],
         )?;
 
-        Ok(Gem {
+        Ok(Seed {
             id,
-            gem_type: input.gem_type,
+            seed_type: input.seed_type,
             title: input.title.clone(),
             notes: input.notes.clone(),
             latitude: input.latitude,
@@ -155,17 +155,17 @@ impl Store {
         })
     }
 
-    /// Fetch a gem by id, or None if not found (ignores soft-deleted).
-    pub fn get_gem(&self, id: &str) -> Result<Option<Gem>, SaplingError> {
+    /// Fetch a seed by id, or None if not found (ignores soft-deleted).
+    pub fn get_seed(&self, id: &str) -> Result<Option<Seed>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, gem_type, title, notes, latitude, longitude, elevation, confidence, tags, created_at, updated_at
-             FROM gems WHERE id = ?1 AND deleted_at IS NULL",
+            "SELECT id, seed_type, title, notes, latitude, longitude, elevation, confidence, tags, created_at, updated_at
+             FROM seeds WHERE id = ?1 AND deleted_at IS NULL",
         )?;
 
         let mut rows = stmt.query_map(rusqlite::params![id], |row| {
-            Ok(GemRow {
+            Ok(SeedRow {
                 id: row.get(0)?,
-                gem_type: row.get(1)?,
+                seed_type: row.get(1)?,
                 title: row.get(2)?,
                 notes: row.get(3)?,
                 latitude: row.get(4)?,
@@ -181,23 +181,23 @@ impl Store {
         match rows.next() {
             Some(row) => {
                 let r = row?;
-                Ok(Some(gem_from_row(r)?))
+                Ok(Some(seed_from_row(r)?))
             }
             None => Ok(None),
         }
     }
 
-    /// List all non-deleted gems.
-    pub fn list_gems(&self) -> Result<Vec<Gem>, SaplingError> {
+    /// List all non-deleted seeds.
+    pub fn list_seeds(&self) -> Result<Vec<Seed>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, gem_type, title, notes, latitude, longitude, elevation, confidence, tags, created_at, updated_at
-             FROM gems WHERE deleted_at IS NULL ORDER BY created_at DESC",
+            "SELECT id, seed_type, title, notes, latitude, longitude, elevation, confidence, tags, created_at, updated_at
+             FROM seeds WHERE deleted_at IS NULL ORDER BY created_at DESC",
         )?;
 
         let rows = stmt.query_map([], |row| {
-            Ok(GemRow {
+            Ok(SeedRow {
                 id: row.get(0)?,
-                gem_type: row.get(1)?,
+                seed_type: row.get(1)?,
                 title: row.get(2)?,
                 notes: row.get(3)?,
                 latitude: row.get(4)?,
@@ -210,11 +210,11 @@ impl Store {
             })
         })?;
 
-        let mut gems = Vec::new();
+        let mut seeds = Vec::new();
         for row in rows {
-            gems.push(gem_from_row(row?)?);
+            seeds.push(seed_from_row(row?)?);
         }
-        Ok(gems)
+        Ok(seeds)
     }
 
     // -- Trip persistence --
@@ -298,20 +298,90 @@ impl Store {
         Ok(points)
     }
 
-    /// Full-text search across gem title, notes, and tags.
-    pub fn search_gems(&self, query: &str) -> Result<Vec<Gem>, SaplingError> {
+    // -- Trip queries --
+
+    /// List all finalized, non-deleted trips, most recent first.
+    pub fn list_trips(&self) -> Result<Vec<TripSummary>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT g.id, g.gem_type, g.title, g.notes, g.latitude, g.longitude, g.elevation, g.confidence, g.tags, g.created_at, g.updated_at
-             FROM gems g
-             JOIN gems_fts f ON g.rowid = f.rowid
-             WHERE gems_fts MATCH ?1 AND g.deleted_at IS NULL
+            "SELECT id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at
+             FROM trips
+             WHERE deleted_at IS NULL AND duration_ms > 0
+             ORDER BY created_at DESC",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok(TripSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                distance_m: row.get(2)?,
+                elevation_gain: row.get(3)?,
+                elevation_loss: row.get(4)?,
+                duration_ms: row.get(5)?,
+                seed_count: 0,
+                segment_count: 0,
+                created_at: row.get(6)?,
+            })
+        })?;
+
+        let mut trips = Vec::new();
+        for row in rows {
+            trips.push(row?);
+        }
+        Ok(trips)
+    }
+
+    /// Fetch a single trip by ID, or None if not found (ignores soft-deleted).
+    pub fn get_trip(&self, id: &str) -> Result<Option<TripSummary>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at
+             FROM trips
+             WHERE id = ?1 AND deleted_at IS NULL",
+        )?;
+
+        let mut rows = stmt.query_map(rusqlite::params![id], |row| {
+            Ok(TripSummary {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                distance_m: row.get(2)?,
+                elevation_gain: row.get(3)?,
+                elevation_loss: row.get(4)?,
+                duration_ms: row.get(5)?,
+                seed_count: 0,
+                segment_count: 0,
+                created_at: row.get(6)?,
+            })
+        })?;
+
+        match rows.next() {
+            Some(row) => Ok(Some(row?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Soft-delete a trip by setting its `deleted_at` timestamp.
+    pub fn delete_trip(&self, id: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE trips SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, id],
+        )?;
+        Ok(())
+    }
+
+    /// Full-text search across seed title, notes, and tags.
+    pub fn search_seeds(&self, query: &str) -> Result<Vec<Seed>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT g.id, g.seed_type, g.title, g.notes, g.latitude, g.longitude, g.elevation, g.confidence, g.tags, g.created_at, g.updated_at
+             FROM seeds g
+             JOIN seeds_fts f ON g.rowid = f.rowid
+             WHERE seeds_fts MATCH ?1 AND g.deleted_at IS NULL
              ORDER BY rank",
         )?;
 
         let rows = stmt.query_map(rusqlite::params![query], |row| {
-            Ok(GemRow {
+            Ok(SeedRow {
                 id: row.get(0)?,
-                gem_type: row.get(1)?,
+                seed_type: row.get(1)?,
                 title: row.get(2)?,
                 notes: row.get(3)?,
                 latitude: row.get(4)?,
@@ -324,18 +394,18 @@ impl Store {
             })
         })?;
 
-        let mut gems = Vec::new();
+        let mut seeds = Vec::new();
         for row in rows {
-            gems.push(gem_from_row(row?)?);
+            seeds.push(seed_from_row(row?)?);
         }
-        Ok(gems)
+        Ok(seeds)
     }
 }
 
 /// Internal row type for mapping SQLite results.
-struct GemRow {
+struct SeedRow {
     id: String,
-    gem_type: String,
+    seed_type: String,
     title: String,
     notes: Option<String>,
     latitude: f64,
@@ -347,14 +417,14 @@ struct GemRow {
     updated_at: String,
 }
 
-fn gem_from_row(r: GemRow) -> Result<Gem, SaplingError> {
+fn seed_from_row(r: SeedRow) -> Result<Seed, SaplingError> {
     let tags: Vec<String> = serde_json::from_str(&r.tags)
         .map_err(|e| SaplingError::Database(format!("bad tags JSON: {e}")))?;
-    let gem_type: GemType = r.gem_type.parse()?;
+    let seed_type: SeedType = r.seed_type.parse()?;
 
-    Ok(Gem {
+    Ok(Seed {
         id: r.id,
-        gem_type,
+        seed_type,
         title: r.title,
         notes: r.notes,
         latitude: r.latitude,
@@ -370,7 +440,7 @@ fn gem_from_row(r: GemRow) -> Result<Gem, SaplingError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::{CreateGemInput, GemType};
+    use crate::models::{CreateSeedInput, SeedType};
     use tempfile::NamedTempFile;
 
     fn test_store() -> Store {
@@ -384,10 +454,10 @@ mod tests {
     }
 
     #[test]
-    fn test_create_and_get_gem() {
+    fn test_create_and_get_seed() {
         let store = test_store();
-        let input = CreateGemInput {
-            gem_type: GemType::Water,
+        let input = CreateSeedInput {
+            seed_type: SeedType::Water,
             title: "Crystal Spring".into(),
             notes: Some("Cold and clear".into()),
             latitude: 37.7749,
@@ -397,30 +467,30 @@ mod tests {
             tags: vec!["reliable".into(), "cold".into()],
         };
 
-        let gem = store.create_gem(&input).unwrap();
-        assert_eq!(gem.title, "Crystal Spring");
-        assert_eq!(gem.gem_type, GemType::Water);
-        assert!(!gem.id.is_empty());
+        let seed = store.create_seed(&input).unwrap();
+        assert_eq!(seed.title, "Crystal Spring");
+        assert_eq!(seed.seed_type, SeedType::Water);
+        assert!(!seed.id.is_empty());
 
-        let fetched = store.get_gem(&gem.id).unwrap().unwrap();
-        assert_eq!(fetched.id, gem.id);
+        let fetched = store.get_seed(&seed.id).unwrap().unwrap();
+        assert_eq!(fetched.id, seed.id);
         assert_eq!(fetched.title, "Crystal Spring");
         assert_eq!(fetched.tags, vec!["reliable", "cold"]);
     }
 
     #[test]
-    fn test_get_gem_not_found() {
+    fn test_get_seed_not_found() {
         let store = test_store();
-        let result = store.get_gem("nonexistent").unwrap();
+        let result = store.get_seed("nonexistent").unwrap();
         assert!(result.is_none());
     }
 
     #[test]
-    fn test_list_gems() {
+    fn test_list_seeds() {
         let store = test_store();
 
-        let input1 = CreateGemInput {
-            gem_type: GemType::Camp,
+        let input1 = CreateSeedInput {
+            seed_type: SeedType::Camp,
             title: "Ridge Camp".into(),
             notes: None,
             latitude: 36.0,
@@ -429,8 +499,8 @@ mod tests {
             confidence: 70,
             tags: vec![],
         };
-        let input2 = CreateGemInput {
-            gem_type: GemType::Beauty,
+        let input2 = CreateSeedInput {
+            seed_type: SeedType::Beauty,
             title: "Sunset Vista".into(),
             notes: Some("Best at golden hour".into()),
             latitude: 36.1,
@@ -440,20 +510,20 @@ mod tests {
             tags: vec!["photography".into()],
         };
 
-        store.create_gem(&input1).unwrap();
-        store.create_gem(&input2).unwrap();
+        store.create_seed(&input1).unwrap();
+        store.create_seed(&input2).unwrap();
 
-        let gems = store.list_gems().unwrap();
-        assert_eq!(gems.len(), 2);
+        let seeds = store.list_seeds().unwrap();
+        assert_eq!(seeds.len(), 2);
     }
 
     #[test]
-    fn test_search_gems() {
+    fn test_search_seeds() {
         let store = test_store();
 
         store
-            .create_gem(&CreateGemInput {
-                gem_type: GemType::Water,
+            .create_seed(&CreateSeedInput {
+                seed_type: SeedType::Water,
                 title: "Mountain Stream".into(),
                 notes: Some("Flows year-round".into()),
                 latitude: 37.0,
@@ -465,8 +535,8 @@ mod tests {
             .unwrap();
 
         store
-            .create_gem(&CreateGemInput {
-                gem_type: GemType::Camp,
+            .create_seed(&CreateSeedInput {
+                seed_type: SeedType::Camp,
                 title: "Pine Flat".into(),
                 notes: Some("Sheltered site near creek".into()),
                 latitude: 37.1,
@@ -478,12 +548,12 @@ mod tests {
             .unwrap();
 
         // Search for "stream" should find the water source
-        let results = store.search_gems("stream").unwrap();
+        let results = store.search_seeds("stream").unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].title, "Mountain Stream");
 
         // Search for "creek" should find Pine Flat (in notes)
-        let results = store.search_gems("creek").unwrap();
+        let results = store.search_seeds("creek").unwrap();
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].title, "Pine Flat");
     }
