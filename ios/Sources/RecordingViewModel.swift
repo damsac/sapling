@@ -9,6 +9,7 @@ class RecordingViewModel {
     var elevationGain: Double = 0
     var elapsedMs: Int64 = 0
     var pointCount: UInt32 = 0
+    var lastError: String? = nil
 
     /// Set after recording stops; drives the trip summary sheet.
     var lastTripSummary: FfiTripSummary? = nil
@@ -78,11 +79,13 @@ class RecordingViewModel {
                         }
                     } catch {
                         print("addLocation error: \(error)")
+                        await MainActor.run { self.lastError = error.localizedDescription }
                     }
                 }
             }
         } catch {
             print("startRecording error: \(error)")
+            lastError = error.localizedDescription
         }
     }
 
@@ -100,6 +103,7 @@ class RecordingViewModel {
             lastTripTrack = savedTrack
         } catch {
             print("stopRecording error: \(error)")
+            lastError = error.localizedDescription
         }
 
         isRecording = false

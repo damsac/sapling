@@ -27,6 +27,7 @@ class SeedViewModel {
 
     /// The seed that's been quick-dropped but not yet saved.
     var pendingSeed: PendingSeed? = nil
+    var lastError: String? = nil
 
     private let core: SaplingCore
     private var autoSaveTask: Task<Void, Never>?
@@ -41,6 +42,7 @@ class SeedViewModel {
             seeds = try core.listSeeds()
         } catch {
             print("loadSeeds error: \(error)")
+            lastError = error.localizedDescription
         }
     }
 
@@ -85,6 +87,7 @@ class SeedViewModel {
             pendingSeed = nil
         } catch {
             print("confirmPendingSeed error: \(error)")
+            lastError = error.localizedDescription
         }
     }
 
@@ -146,6 +149,7 @@ class SeedViewModel {
             pendingSeedType = nil
         } catch {
             print("createSeed error: \(error)")
+            lastError = error.localizedDescription
         }
     }
 

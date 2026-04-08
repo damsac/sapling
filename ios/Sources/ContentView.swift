@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var showOfflineSheet: Bool = false
     @State private var showTripList: Bool = false
     @State private var visibleBounds: MLNCoordinateBounds?
+    @State private var initError: String? = nil
     private var offlineManager = OfflineMapManager.shared
 
     init() {
@@ -18,10 +19,19 @@ struct ContentView: View {
             in: .userDomainMask
         ).first!
         let dbPath = documentsDir.appendingPathComponent("sapling.db").path
-        let core = try! SaplingCore(dbPath: dbPath)
-        _viewModel = State(initialValue: RecordingViewModel(core: core))
-        _seedViewModel = State(initialValue: SeedViewModel(core: core))
-        _tripListViewModel = State(initialValue: TripListViewModel(core: core))
+        do {
+            let core = try SaplingCore(dbPath: dbPath)
+            _viewModel = State(initialValue: RecordingViewModel(core: core))
+            _seedViewModel = State(initialValue: SeedViewModel(core: core))
+            _tripListViewModel = State(initialValue: TripListViewModel(core: core))
+        } catch {
+            // Create a fallback in-memory core so views can still render
+            let fallbackCore = try! SaplingCore(dbPath: ":memory:")
+            _viewModel = State(initialValue: RecordingViewModel(core: fallbackCore))
+            _seedViewModel = State(initialValue: SeedViewModel(core: fallbackCore))
+            _tripListViewModel = State(initialValue: TripListViewModel(core: fallbackCore))
+            _initError = State(initialValue: "Failed to open database: \(error.localizedDescription)")
+        }
     }
 
     var body: some View {
@@ -263,6 +273,22 @@ struct ContentView: View {
         .sheet(isPresented: $showTripList) {
             TripListView(viewModel: tripListViewModel)
                 .presentationDetents([.medium, .large])
+        }
+        .alert("Error", isPresented: Binding(
+            get: { viewModel.lastError != nil || seedViewModel.lastError != nil },
+            set: { if !$0 { viewModel.lastError = nil; seedViewModel.lastError = nil } }
+        )) {
+            Button("OK") { viewModel.lastError = nil; seedViewModel.lastError = nil }
+        } message: {
+            Text(viewModel.lastError ?? seedViewModel.lastError ?? "An unknown error occurred.")
+        }
+        .alert("Database Error", isPresented: Binding(
+            get: { initError != nil },
+            set: { if !$0 { initError = nil } }
+        )) {
+            Button("OK") { initError = nil }
+        } message: {
+            Text(initError ?? "An unknown error occurred.")
         }
     }
 

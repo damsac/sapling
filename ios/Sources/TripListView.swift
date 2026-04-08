@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct TripListView: View {
-    @State var viewModel: TripListViewModel
+    var viewModel: TripListViewModel
     @State private var tripToDelete: FfiTripSummary? = nil
     @Environment(\.dismiss) private var dismiss
 

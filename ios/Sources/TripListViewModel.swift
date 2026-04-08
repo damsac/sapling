@@ -3,6 +3,7 @@ import Observation
 @Observable
 class TripListViewModel {
     var trips: [FfiTripSummary] = []
+    var lastError: String? = nil
 
     private let core: SaplingCore
 
@@ -16,6 +17,7 @@ class TripListViewModel {
             trips = try core.listTrips()
         } catch {
             print("loadTrips error: \(error)")
+            lastError = error.localizedDescription
         }
     }
 
@@ -25,6 +27,7 @@ class TripListViewModel {
             trips.removeAll { $0.id == id }
         } catch {
             print("deleteTrip error: \(error)")
+            lastError = error.localizedDescription
         }
     }
 
@@ -33,6 +36,7 @@ class TripListViewModel {
             return try core.getTrackPoints(tripId: tripId)
         } catch {
             print("getTrackPoints error: \(error)")
+            lastError = error.localizedDescription
             return []
         }
     }

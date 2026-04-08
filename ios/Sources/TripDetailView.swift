@@ -34,10 +34,7 @@ struct TripDetailView: View {
 
     private var trailMap: some View {
         let bounds = boundingBox(for: trackCoordinates)
-        let center = CLLocationCoordinate2D(
-            latitude: (bounds.minLat + bounds.maxLat) / 2,
-            longitude: (bounds.minLon + bounds.maxLon) / 2
-        )
+        let center = bounds.center
         let zoom = zoomToFit(bounds: bounds)
 
         return MapView(
@@ -119,39 +116,4 @@ struct TripDetailView: View {
         }
     }
 
-    // MARK: - Bounding Box Helpers
-
-    private struct BBox {
-        var minLat: Double
-        var maxLat: Double
-        var minLon: Double
-        var maxLon: Double
-    }
-
-    private func boundingBox(for coords: [CLLocationCoordinate2D]) -> BBox {
-        guard let first = coords.first else {
-            return BBox(minLat: 0, maxLat: 0, minLon: 0, maxLon: 0)
-        }
-        var bbox = BBox(
-            minLat: first.latitude, maxLat: first.latitude,
-            minLon: first.longitude, maxLon: first.longitude
-        )
-        for c in coords {
-            bbox.minLat = min(bbox.minLat, c.latitude)
-            bbox.maxLat = max(bbox.maxLat, c.latitude)
-            bbox.minLon = min(bbox.minLon, c.longitude)
-            bbox.maxLon = max(bbox.maxLon, c.longitude)
-        }
-        return bbox
-    }
-
-    private func zoomToFit(bounds: BBox) -> Double {
-        let latSpan = bounds.maxLat - bounds.minLat
-        let lonSpan = bounds.maxLon - bounds.minLon
-        let span = max(latSpan, lonSpan)
-        guard span > 0 else { return 15 }
-        let paddedSpan = span * 1.4
-        let zoom = log2(360.0 / paddedSpan)
-        return min(max(zoom, 1), 18)
-    }
 }

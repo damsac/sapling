@@ -303,10 +303,15 @@ impl Store {
     /// List all finalized, non-deleted trips, most recent first.
     pub fn list_trips(&self) -> Result<Vec<TripSummary>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at
-             FROM trips
-             WHERE deleted_at IS NULL AND duration_ms > 0
-             ORDER BY created_at DESC",
+            "SELECT t.id, t.name, t.distance_m, t.elevation_gain, t.elevation_loss, t.duration_ms, t.created_at,
+                    COUNT(DISTINCT ts.seed_id) AS seed_count,
+                    COUNT(DISTINCT tp.segment_index) AS segment_count
+             FROM trips t
+             LEFT JOIN trip_seeds ts ON t.id = ts.trip_id AND ts.deleted_at IS NULL
+             LEFT JOIN track_points tp ON t.id = tp.trip_id AND tp.deleted_at IS NULL
+             WHERE t.deleted_at IS NULL AND t.duration_ms > 0
+             GROUP BY t.id
+             ORDER BY t.created_at DESC",
         )?;
 
         let rows = stmt.query_map([], |row| {
@@ -317,9 +322,9 @@ impl Store {
                 elevation_gain: row.get(3)?,
                 elevation_loss: row.get(4)?,
                 duration_ms: row.get(5)?,
-                seed_count: 0,
-                segment_count: 0,
                 created_at: row.get(6)?,
+                seed_count: row.get::<_, u32>(7)?,
+                segment_count: row.get::<_, u32>(8)?,
             })
         })?;
 
@@ -333,9 +338,14 @@ impl Store {
     /// Fetch a single trip by ID, or None if not found (ignores soft-deleted).
     pub fn get_trip(&self, id: &str) -> Result<Option<TripSummary>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at
-             FROM trips
-             WHERE id = ?1 AND deleted_at IS NULL",
+            "SELECT t.id, t.name, t.distance_m, t.elevation_gain, t.elevation_loss, t.duration_ms, t.created_at,
+                    COUNT(DISTINCT ts.seed_id) AS seed_count,
+                    COUNT(DISTINCT tp.segment_index) AS segment_count
+             FROM trips t
+             LEFT JOIN trip_seeds ts ON t.id = ts.trip_id AND ts.deleted_at IS NULL
+             LEFT JOIN track_points tp ON t.id = tp.trip_id AND tp.deleted_at IS NULL
+             WHERE t.id = ?1 AND t.deleted_at IS NULL
+             GROUP BY t.id",
         )?;
 
         let mut rows = stmt.query_map(rusqlite::params![id], |row| {
@@ -346,9 +356,9 @@ impl Store {
                 elevation_gain: row.get(3)?,
                 elevation_loss: row.get(4)?,
                 duration_ms: row.get(5)?,
-                seed_count: 0,
-                segment_count: 0,
                 created_at: row.get(6)?,
+                seed_count: row.get::<_, u32>(7)?,
+                segment_count: row.get::<_, u32>(8)?,
             })
         })?;
 
@@ -358,11 +368,19 @@ impl Store {
         }
     }
 
-    /// Soft-delete a trip by setting its `deleted_at` timestamp.
+    /// Soft-delete a trip and its associated track points and seed links.
     pub fn delete_trip(&self, id: &str) -> Result<(), SaplingError> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(
             "UPDATE trips SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, id],
+        )?;
+        self.conn.execute(
+            "UPDATE track_points SET deleted_at = ?1 WHERE trip_id = ?2 AND deleted_at IS NULL",
+            rusqlite::params![now, id],
+        )?;
+        self.conn.execute(
+            "UPDATE trip_seeds SET deleted_at = ?1 WHERE trip_id = ?2 AND deleted_at IS NULL",
             rusqlite::params![now, id],
         )?;
         Ok(())
@@ -515,6 +533,67 @@ mod tests {
 
         let seeds = store.list_seeds().unwrap();
         assert_eq!(seeds.len(), 2);
+    }
+
+    #[test]
+    fn test_list_trips_with_counts() {
+        let store = test_store();
+
+        // Create a trip and finalize it
+        store.create_trip("trip-1", "Morning Hike").unwrap();
+        let point = TrackPoint {
+            latitude: 37.0,
+            longitude: -122.0,
+            elevation: Some(100.0),
+            h_accuracy: 5.0,
+            v_accuracy: 3.0,
+            speed: 1.0,
+            course: 0.0,
+            timestamp_ms: 1000,
+            baro_relative_altitude: None,
+        };
+        store.add_track_point("trip-1", &point).unwrap();
+        store
+            .finalize_trip("trip-1", 500.0, 50.0, 10.0, 3600000)
+            .unwrap();
+
+        let trips = store.list_trips().unwrap();
+        assert_eq!(trips.len(), 1);
+        // segment_count should be 1 (all points have default segment_index 0)
+        assert_eq!(trips[0].segment_count, 1);
+    }
+
+    #[test]
+    fn test_delete_trip_cascades() {
+        let store = test_store();
+
+        store.create_trip("trip-del", "Deleted Hike").unwrap();
+        let point = TrackPoint {
+            latitude: 37.0,
+            longitude: -122.0,
+            elevation: Some(100.0),
+            h_accuracy: 5.0,
+            v_accuracy: 3.0,
+            speed: 1.0,
+            course: 0.0,
+            timestamp_ms: 1000,
+            baro_relative_altitude: None,
+        };
+        store.add_track_point("trip-del", &point).unwrap();
+        store
+            .finalize_trip("trip-del", 100.0, 10.0, 5.0, 1000)
+            .unwrap();
+
+        // Delete the trip
+        store.delete_trip("trip-del").unwrap();
+
+        // Trip should no longer appear
+        let trips = store.list_trips().unwrap();
+        assert!(trips.is_empty());
+
+        // Track points should also be soft-deleted
+        let points = store.get_track_points("trip-del").unwrap();
+        assert!(points.is_empty());
     }
 
     #[test]

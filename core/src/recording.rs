@@ -16,6 +16,10 @@ const RESUME_SPEED: f64 = 0.5;
 /// Duration of low speed before transitioning to Paused (ms).
 const PAUSE_DELAY_MS: i64 = 60_000;
 
+/// Minimum elevation change to count as gain or loss (meters).
+/// Filters out GPS/barometer jitter that would inflate totals.
+const ELEVATION_THRESHOLD: f64 = 2.0;
+
 /// GPS recording state machine.
 pub struct Recorder {
     trip_id: Option<String>,
@@ -102,12 +106,12 @@ impl Recorder {
             // Accumulate distance
             self.distance_m += dist;
 
-            // Accumulate elevation
+            // Accumulate elevation (with noise threshold to filter GPS jitter)
             if let (Some(prev_elev), Some(curr_elev)) = (last.elevation, point.elevation) {
                 let delta = curr_elev - prev_elev;
-                if delta > 0.0 {
+                if delta > ELEVATION_THRESHOLD {
                     self.elevation_gain += delta;
-                } else {
+                } else if delta < -ELEVATION_THRESHOLD {
                     self.elevation_loss += delta.abs();
                 }
             }
@@ -371,6 +375,37 @@ mod tests {
 
         let summary = rec.stop().unwrap();
         assert!((summary.elevation_gain - 50.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_elevation_noise_filtered() {
+        let mut rec = Recorder::new();
+        rec.start(None);
+
+        // Point 1 at 100m
+        let mut p1 = make_point(0.0, 0.0, 1.0, 1000);
+        p1.elevation = Some(100.0);
+        rec.add_location(p1);
+
+        // Point 2 at 101.5m — only +1.5m, below 2m threshold — should be filtered
+        let mut p2 = make_point(0.001, 0.0, 1.0, 2000);
+        p2.elevation = Some(101.5);
+        let update = rec.add_location(p2).unwrap();
+        assert!(
+            update.elevation_gain < 0.01,
+            "jitter below threshold should not count as gain, got {:.2}",
+            update.elevation_gain
+        );
+
+        // Point 3 at 105m — +3.5m from last accepted, above threshold
+        let mut p3 = make_point(0.002, 0.0, 1.0, 3000);
+        p3.elevation = Some(105.0);
+        let update = rec.add_location(p3).unwrap();
+        assert!(
+            (update.elevation_gain - 3.5).abs() < 0.01,
+            "delta above threshold should count, got {:.2}",
+            update.elevation_gain
+        );
     }
 
     use proptest::prelude::*;

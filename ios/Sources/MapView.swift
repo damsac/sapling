@@ -32,6 +32,8 @@ struct TrailMapView: View {
     @State private var isDraggingPending: Bool = false
     /// Drives the pulsing animation on the pending pin.
     @State private var isPulsing: Bool = false
+    /// Debounce task for visible bounds updates.
+    @State private var boundsUpdateTask: Task<Void, Never>?
 
     var body: some View {
         GeometryReader { geo in
@@ -132,13 +134,13 @@ struct TrailMapView: View {
                     }
                 }
                 .onChange(of: cameraCenter.latitude) { _, _ in
-                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
+                    scheduleBoundsUpdate(in: geo.size)
                 }
                 .onChange(of: cameraCenter.longitude) { _, _ in
-                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
+                    scheduleBoundsUpdate(in: geo.size)
                 }
                 .onChange(of: currentZoom) { _, _ in
-                    onVisibleBoundsChanged?(visibleBounds(in: geo.size))
+                    scheduleBoundsUpdate(in: geo.size)
                 }
 
                 // MARK: - Pending Seed Overlay
@@ -252,6 +254,16 @@ struct TrailMapView: View {
 
     // MARK: - Visible Bounds
 
+    /// Debounce visible bounds updates to avoid excessive recomputation during panning.
+    private func scheduleBoundsUpdate(in size: CGSize) {
+        boundsUpdateTask?.cancel()
+        boundsUpdateTask = Task {
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            onVisibleBoundsChanged?(visibleBounds(in: size))
+        }
+    }
+
     /// Compute the approximate bounding box of the visible map area.
     private func visibleBounds(in size: CGSize) -> MLNCoordinateBounds {
         let sw = screenToCoordinate(CGPoint(x: 0, y: size.height), in: size)
@@ -341,18 +353,16 @@ struct TrailMapView: View {
     ) -> CLLocationDistance {
         let tapRadiusPts: Double = 22
         let latRadians = coordinate.latitude * .pi / 180
-        let metersPerPt = 156543.03 * cos(latRadians) / pow(2.0, zoom)
-        return min(max(metersPerPt * tapRadiusPts, 30), 500)
+        // metersPerPixel at this zoom and latitude (Web Mercator)
+        let metersPerPixel = 156543.03 * cos(latRadians) / pow(2.0, zoom)
+        // Convert points to pixels via screen scale, then to meters
+        let metersPerPt = metersPerPixel / UIScreen.main.scale
+        return min(max(metersPerPt * tapRadiusPts, 5), 200)
     }
 
     // MARK: - Seed Feature Helpers
 
     private func seedPointFeatures() -> [MLNPointFeature] {
-        if seeds.isEmpty {
-            let placeholder = MLNPointFeature()
-            placeholder.coordinate = CLLocationCoordinate2D(latitude: 0, longitude: 0)
-            return [placeholder]
-        }
         return seeds.map { seed in
             let feature = MLNPointFeature()
             feature.coordinate = CLLocationCoordinate2D(
