@@ -19,6 +19,8 @@ class RecordingViewModel {
     private let core: SaplingCore
     private let locationProvider = LocationProvider()
     private var recordingTask: Task<Void, Never>?
+    private var timerTask: Task<Void, Never>?
+    private var recordingStartedAt: Date?
     private var currentTripId: String?
 
     /// Last known location from the provider, for centering the map.
@@ -42,6 +44,7 @@ class RecordingViewModel {
             let tripId = try core.startRecording(name: name)
             currentTripId = tripId
             isRecording = true
+            recordingStartedAt = Date()
             trackCoordinates = []
             distanceMeters = 0
             elevationGain = 0
@@ -49,6 +52,19 @@ class RecordingViewModel {
             pointCount = 0
 
             locationProvider.startUpdates()
+
+            // Wall-clock display timer — ticks every second for smooth UX
+            // regardless of GPS fix cadence. Distance, elevation, and the
+            // stored track are still GPS-driven; this only drives the live
+            // timer readout. The authoritative trip duration comes from
+            // Rust's summary on stop.
+            timerTask = Task { @MainActor [weak self] in
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    guard let self, let start = self.recordingStartedAt else { continue }
+                    self.elapsedMs = Int64(Date().timeIntervalSince(start) * 1000)
+                }
+            }
 
             // Detached so the blocking FFI + SQLite writes run off the main
             // thread. UI updates hop back via MainActor.run.
@@ -82,8 +98,10 @@ class RecordingViewModel {
                                 self.trackCoordinates.append(location.coordinate)
                                 self.distanceMeters = update.distanceM
                                 self.elevationGain = update.elevationGain
-                                self.elapsedMs = update.elapsedMs
                                 self.pointCount = update.pointCount
+                                // elapsedMs is driven by wall-clock timerTask;
+                                // Rust's update.elapsedMs surfaces on the
+                                // trip summary at stopRecording.
                             }
                         }
                     } catch {
@@ -101,6 +119,8 @@ class RecordingViewModel {
     func stopRecording() {
         recordingTask?.cancel()
         recordingTask = nil
+        timerTask?.cancel()
+        timerTask = nil
         locationProvider.stopUpdates()
 
         // Capture track before clearing state
@@ -116,6 +136,7 @@ class RecordingViewModel {
         }
 
         isRecording = false
+        recordingStartedAt = nil
         currentTripId = nil
     }
 
