@@ -28,6 +28,11 @@ class RecordingViewModel {
         locationProvider.currentLocation
     }
 
+    /// Last known device heading, for the map's direction indicator.
+    var currentHeading: CLHeading? {
+        locationProvider.currentHeading
+    }
+
     init(core: SaplingCore) {
         self.core = core
     }

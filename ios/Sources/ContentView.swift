@@ -42,6 +42,7 @@ struct ContentView: View {
             TrailMapView(
                 trackCoordinates: viewModel.trackCoordinates,
                 userLocation: viewModel.currentLocation,
+                userHeading: viewModel.currentHeading,
                 seeds: seedViewModel.seeds,
                 onLongPress: { coordinate in
                     seedViewModel.startSeedCreation(at: coordinate)

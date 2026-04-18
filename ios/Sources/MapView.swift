@@ -7,6 +7,7 @@ import SwiftUI
 struct TrailMapView: View {
     let trackCoordinates: [CLLocationCoordinate2D]
     let userLocation: CLLocation?
+    let userHeading: CLHeading?
     let seeds: [FfiSeed]
     var onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
     var onSeedTapped: ((FfiSeed) -> Void)? = nil
@@ -165,6 +166,38 @@ struct TrailMapView: View {
                     if let coordinate = userLocation?.coordinate {
                         camera = .center(coordinate, zoom: max(currentZoom, 15))
                     }
+                }
+
+                // MARK: - Heading Wedge
+
+                // A small arrow anchored to the user-location dot, rotated to
+                // show where the phone is pointing. Hidden until the compass
+                // has a valid reading (negative headingAccuracy = uncalibrated).
+                if let userCoord = userLocation?.coordinate,
+                   let heading = userHeading,
+                   heading.headingAccuracy >= 0 {
+                    let screenPos = coordinateToScreen(userCoord, in: geo.size)
+                    let direction = heading.trueHeading >= 0
+                        ? heading.trueHeading
+                        : heading.magneticHeading
+                    // Arrow sits 16pt from the dot, in the heading direction.
+                    // North is up, positive Y is down, so cos flips sign.
+                    let radians = direction * .pi / 180
+                    let offsetX = sin(radians) * 16
+                    let offsetY = -cos(radians) * 16
+
+                    ZStack {
+                        // White outline so the arrow reads on any map style
+                        Image(systemName: "arrowtriangle.up.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.white)
+                        Image(systemName: "arrowtriangle.up.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.blue)
+                    }
+                    .rotationEffect(.degrees(direction))
+                    .position(x: screenPos.x + offsetX, y: screenPos.y + offsetY)
+                    .allowsHitTesting(false)
                 }
 
                 // MARK: - Pending Seed Overlay
