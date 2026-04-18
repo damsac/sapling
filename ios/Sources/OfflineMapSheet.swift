@@ -47,7 +47,7 @@ struct OfflineMapSheet: View {
 
                                 Text("\(est.tileCount) tiles, z10-z14")
                                     .font(.caption)
-                                    .foregroundStyle(.tertiary)
+                                    .foregroundStyle(.secondary)
                             }
 
                             // Name field
@@ -124,13 +124,13 @@ struct OfflineMapSheet: View {
                         VStack(spacing: 8) {
                             Image(systemName: "map")
                                 .font(.largeTitle)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.secondary)
                             Text("No offline maps yet")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text("Pan the map to your trail area, then download tiles for offline use.")
                                 .font(.caption)
-                                .foregroundStyle(.tertiary)
+                                .foregroundStyle(.secondary)
                                 .multilineTextAlignment(.center)
                         }
                         .frame(maxWidth: .infinity)
@@ -171,7 +171,7 @@ struct OfflinePackRow: View {
             if pack.isComplete {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(SaplingColors.brand)
                         .font(.caption)
                     Text("Downloaded \(pack.formattedDate)")
                         .font(.caption)
@@ -179,7 +179,7 @@ struct OfflinePackRow: View {
                     Spacer()
                     Text("z\(Int(pack.minZoom))-\(Int(pack.maxZoom))")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
                 }
             } else {
                 // In-progress

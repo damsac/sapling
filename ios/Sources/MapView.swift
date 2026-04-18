@@ -20,6 +20,9 @@ struct TrailMapView: View {
     /// Callback providing the approximate visible bounding box when the camera changes.
     var onVisibleBoundsChanged: ((MLNCoordinateBounds) -> Void)? = nil
 
+    /// Toggled by parent to trigger snapping camera to user location.
+    @Binding var snapToLocationTrigger: Bool
+
     @State private var camera: MapViewCamera = .center(
         CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         zoom: 14
@@ -51,7 +54,7 @@ struct TrailMapView: View {
 
                     // Style modifiers take direct values, not .constant() wrapped
                     LineStyleLayer(identifier: "trail-line", source: trailSource)
-                        .lineColor(.systemBlue)
+                        .lineColor(SaplingColors.trailUI)
                         .lineWidth(4)
                         .lineCap(.round)
                         .lineJoin(.round)
@@ -142,6 +145,11 @@ struct TrailMapView: View {
                 .onChange(of: currentZoom) { _, _ in
                     scheduleBoundsUpdate(in: geo.size)
                 }
+                .onChange(of: snapToLocationTrigger) { _, _ in
+                    if let coordinate = userLocation?.coordinate {
+                        camera = .center(coordinate, zoom: max(currentZoom, 15))
+                    }
+                }
 
                 // MARK: - Pending Seed Overlay
 
@@ -230,7 +238,7 @@ struct TrailMapView: View {
                                 .font(.caption.weight(.bold))
                                 .foregroundStyle(.secondary)
                                 .padding(6)
-                                .background(.ultraThinMaterial, in: Circle())
+                                .background(.thinMaterial, in: Circle())
                         }
                     }
                     .position(

@@ -9,13 +9,13 @@ struct SeedTypePicker: View {
             // Header with cancel
             HStack {
                 Text("Plant a Seed")
-                    .font(.headline)
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
                 Spacer()
                 Button(action: onCancel) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
             }
             .padding(.horizontal)
@@ -47,7 +47,7 @@ struct SeedTypePicker: View {
             .padding(.horizontal, 4)
         }
         .padding(.vertical, 20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
     }
 }

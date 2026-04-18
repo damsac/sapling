@@ -46,7 +46,7 @@ struct TripDetailView: View {
             }
 
             LineStyleLayer(identifier: "detail-trail-line", source: trailSource)
-                .lineColor(.systemBlue)
+                .lineColor(SaplingColors.trailUI)
                 .lineWidth(4)
                 .lineCap(.round)
                 .lineJoin(.round)
@@ -102,7 +102,7 @@ struct TripDetailView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal, 16)
         .padding(.bottom, 40)
     }

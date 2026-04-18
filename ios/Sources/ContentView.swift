@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var showTripList: Bool = false
     @State private var visibleBounds: MLNCoordinateBounds?
     @State private var initError: String? = nil
+    @State private var snapToLocationTrigger: Bool = false
     private var offlineManager = OfflineMapManager.shared
 
     init() {
@@ -63,7 +64,8 @@ struct ContentView: View {
                 },
                 onVisibleBoundsChanged: { bounds in
                     visibleBounds = bounds
-                }
+                },
+                snapToLocationTrigger: $snapToLocationTrigger
             )
             .ignoresSafeArea()
 
@@ -79,17 +81,31 @@ struct ContentView: View {
                             .font(.body.weight(.medium))
                             .foregroundStyle(.primary)
                             .frame(width: 40, height: 40)
-                            .background(.ultraThinMaterial, in: Circle())
+                            .background(.thinMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                     }
                     .padding(.leading, 16)
                     .padding(.top, 60)
 
                     Spacer()
 
-                    OfflineMapButton(
-                        packCount: offlineManager.packs.count,
-                        action: { showOfflineSheet = true }
-                    )
+                    VStack(spacing: 12) {
+                        OfflineMapButton(
+                            packCount: offlineManager.packs.count,
+                            action: { showOfflineSheet = true }
+                        )
+
+                        Button {
+                            snapToLocationTrigger.toggle()
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .frame(width: 40, height: 40)
+                                .background(.thinMaterial, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        }
+                    }
                     .padding(.trailing, 16)
                     .padding(.top, 60)
                 }
@@ -129,7 +145,7 @@ struct ContentView: View {
                         }
                     }
                     .padding()
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     .padding(.top)
                 }
 
@@ -206,7 +222,7 @@ struct ContentView: View {
                             }
                         } label: {
                             Circle()
-                                .fill(viewModel.isRecording ? .red : .green)
+                                .fill(viewModel.isRecording ? SaplingColors.stopRecording : SaplingColors.recording)
                                 .frame(width: 64, height: 64)
                                 .overlay {
                                     Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
@@ -290,6 +306,7 @@ struct ContentView: View {
         } message: {
             Text(initError ?? "An unknown error occurred.")
         }
+        .fontDesign(.rounded)
     }
 
     // MARK: - Record Tap Authorization Check
@@ -362,7 +379,7 @@ struct SeedQuickDropBar: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: Capsule())
+        .background(.regularMaterial, in: Capsule())
         .padding(.horizontal, 16)
     }
 }

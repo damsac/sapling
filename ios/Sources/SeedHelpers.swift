@@ -25,21 +25,21 @@ extension FfiSeedType {
 
     var color: Color {
         switch self {
-        case .water: Color(red: 0.231, green: 0.510, blue: 0.965)   // #3B82F6
-        case .camp: Color(red: 0.573, green: 0.251, blue: 0.055)    // #92400E
-        case .beauty: Color(red: 0.851, green: 0.467, blue: 0.024)  // #D97706
-        case .service: Color(red: 0.486, green: 0.235, blue: 0.929) // #7C3AED
-        case .custom: Color(red: 0.420, green: 0.451, blue: 0.498)  // #6B7280
+        case .water: SaplingColors.water
+        case .camp: SaplingColors.camp
+        case .beauty: SaplingColors.beauty
+        case .service: SaplingColors.service
+        case .custom: SaplingColors.custom
         }
     }
 
     var uiColor: UIColor {
         switch self {
-        case .water: UIColor(red: 0.231, green: 0.510, blue: 0.965, alpha: 1)
-        case .camp: UIColor(red: 0.573, green: 0.251, blue: 0.055, alpha: 1)
-        case .beauty: UIColor(red: 0.851, green: 0.467, blue: 0.024, alpha: 1)
-        case .service: UIColor(red: 0.486, green: 0.235, blue: 0.929, alpha: 1)
-        case .custom: UIColor(red: 0.420, green: 0.451, blue: 0.498, alpha: 1)
+        case .water: SaplingColors.waterUI
+        case .camp: SaplingColors.campUI
+        case .beauty: SaplingColors.beautyUI
+        case .service: SaplingColors.serviceUI
+        case .custom: SaplingColors.customUI
         }
     }
 

@@ -23,20 +23,20 @@ struct SeedQuickAdd: View {
                     .background(seedType.color, in: Circle())
 
                 Text(seedType.displayName)
-                    .font(.subheadline.weight(.medium))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(seedType.color)
 
                 Spacer()
 
                 Button("Cancel", action: onCancel)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
             .padding(.horizontal)
 
             // Title field
             TextField("Name this seed", text: $title)
-                .font(.title3.weight(.medium))
+                .font(.title3.weight(.semibold))
                 .textFieldStyle(.plain)
                 .padding(.horizontal)
                 .focused($titleFocused)
@@ -72,7 +72,7 @@ struct SeedQuickAdd: View {
                 Text(formatCoordinate(coordinate))
                     .font(.caption.monospacedDigit())
             }
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal)
 
@@ -86,16 +86,16 @@ struct SeedQuickAdd: View {
                 onSave(finalTitle, finalNotes)
             } label: {
                 Text("Save Seed")
-                    .font(.headline)
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(seedType.color, in: RoundedRectangle(cornerRadius: 12))
+                    .background(SaplingColors.brand, in: RoundedRectangle(cornerRadius: 12))
             }
             .padding(.horizontal)
         }
         .padding(.vertical, 20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
         .onAppear {
             title = seedType.defaultTitle

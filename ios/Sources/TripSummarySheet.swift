@@ -48,7 +48,7 @@ struct TripSummarySheet: View {
                     if summary.seedCount > 0 {
                         HStack {
                             Image(systemName: "leaf.fill")
-                                .foregroundStyle(.green)
+                                .foregroundStyle(SaplingColors.brand)
                             Text("\(summary.seedCount) seed\(summary.seedCount == 1 ? "" : "s") dropped")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
@@ -59,17 +59,17 @@ struct TripSummarySheet: View {
                     // Done button
                     Button(action: onDismiss) {
                         Text("Done")
-                            .font(.headline)
+                            .font(.headline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 24)
                 }
             }
         }
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled(false)
@@ -98,7 +98,7 @@ private struct StatsGrid: View {
             }
         }
         .padding(16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -137,7 +137,7 @@ private struct SummaryMapView: View {
             }
 
             LineStyleLayer(identifier: "summary-trail-line", source: trailSource)
-                .lineColor(.systemBlue)
+                .lineColor(SaplingColors.trailUI)
                 .lineWidth(4)
                 .lineCap(.round)
                 .lineJoin(.round)

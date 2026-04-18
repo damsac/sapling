@@ -10,7 +10,7 @@ struct BackgroundLocationModal: View {
             // Icon
             Image(systemName: "location.fill")
                 .font(.system(size: 36))
-                .foregroundStyle(Color(red: 0.29, green: 0.49, blue: 0.35))
+                .foregroundStyle(SaplingColors.brand)
                 .padding(.top, 24)
 
             // Title
@@ -36,7 +36,7 @@ struct BackgroundLocationModal: View {
                     .fontWeight(.medium)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color(red: 0.29, green: 0.49, blue: 0.35))
+                    .background(SaplingColors.brand)
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
@@ -51,22 +51,22 @@ struct BackgroundLocationModal: View {
             } label: {
                 Text("Record Anyway")
                     .font(.subheadline)
-                    .foregroundStyle(Color(red: 0.29, green: 0.49, blue: 0.35))
+                    .foregroundStyle(SaplingColors.brand)
             }
 
             // Don't show again toggle — subtle
             Toggle(isOn: $dontShowAgain) {
                 Text("Don't show me again")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
             }
             .toggleStyle(.switch)
-            .tint(Color(red: 0.29, green: 0.49, blue: 0.35))
+            .tint(SaplingColors.brand)
             .padding(.horizontal, 16)
             .padding(.bottom, 20)
         }
         .padding(.horizontal, 16)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 32)
     }
 }

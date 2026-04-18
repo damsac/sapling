@@ -16,9 +16,9 @@ struct SeedDetailSheet: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(seed.title)
-                        .font(.headline)
+                        .font(.headline.weight(.semibold))
                     Text(seed.seedType.displayName)
-                        .font(.caption)
+                        .font(.caption.weight(.medium))
                         .foregroundStyle(seed.seedType.color)
                 }
 
@@ -27,7 +27,7 @@ struct SeedDetailSheet: View {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
             }
 
@@ -51,7 +51,7 @@ struct SeedDetailSheet: View {
             }
         }
         .padding(20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
     }
 
@@ -60,11 +60,11 @@ struct SeedDetailSheet: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
             Spacer()
             Text(value)
                 .font(.caption.monospacedDigit())

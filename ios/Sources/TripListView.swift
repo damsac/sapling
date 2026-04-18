@@ -90,7 +90,7 @@ private struct TripRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(trip.name)
-                .font(.headline)
+                .font(.headline.weight(.semibold))
 
             Text(formattedDate)
                 .font(.subheadline)

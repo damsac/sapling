@@ -15,7 +15,7 @@ struct OfflineMapButton: View {
                     .font(.title2)
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
-                    .background(.ultraThinMaterial, in: Circle())
+                    .background(.thinMaterial, in: Circle())
                     .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
                 // Badge showing saved pack count
@@ -24,7 +24,7 @@ struct OfflineMapButton: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.white)
                         .frame(width: 18, height: 18)
-                        .background(.green, in: Circle())
+                        .background(SaplingColors.brand, in: Circle())
                         .offset(x: 4, y: -4)
                 }
             }
