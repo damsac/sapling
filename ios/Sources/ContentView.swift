@@ -1,10 +1,18 @@
 import SwiftUI
 import CoreLocation
+import MapLibre
 
 struct ContentView: View {
     @State private var viewModel: RecordingViewModel
-    @State private var gemViewModel: GemViewModel
+    @State private var seedViewModel: SeedViewModel
+    @State private var tripListViewModel: TripListViewModel
     @State private var showBackgroundModal: Bool = false
+    @State private var showOfflineSheet: Bool = false
+    @State private var showTripList: Bool = false
+    @State private var visibleBounds: MLNCoordinateBounds?
+    @State private var initError: String? = nil
+    @State private var snapToLocationTrigger: Bool = false
+    private var offlineManager = OfflineMapManager.shared
 
     init() {
         let documentsDir = FileManager.default.urls(
@@ -12,26 +20,97 @@ struct ContentView: View {
             in: .userDomainMask
         ).first!
         let dbPath = documentsDir.appendingPathComponent("sapling.db").path
-        let core = try! SaplingCore(dbPath: dbPath)
-        _viewModel = State(initialValue: RecordingViewModel(core: core))
-        _gemViewModel = State(initialValue: GemViewModel(core: core))
+        do {
+            let core = try SaplingCore(dbPath: dbPath)
+            _viewModel = State(initialValue: RecordingViewModel(core: core))
+            _seedViewModel = State(initialValue: SeedViewModel(core: core))
+            _tripListViewModel = State(initialValue: TripListViewModel(core: core))
+        } catch {
+            // Create a fallback in-memory core so views can still render
+            let fallbackCore = try! SaplingCore(dbPath: ":memory:")
+            _viewModel = State(initialValue: RecordingViewModel(core: fallbackCore))
+            _seedViewModel = State(initialValue: SeedViewModel(core: fallbackCore))
+            _tripListViewModel = State(initialValue: TripListViewModel(core: fallbackCore))
+            _initError = State(initialValue: "Failed to open database: \(error.localizedDescription)")
+        }
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Full-screen map with gem markers and gestures
+            // Full-screen map with seed markers and gestures
             TrailMapView(
                 trackCoordinates: viewModel.trackCoordinates,
                 userLocation: viewModel.currentLocation,
-                gems: gemViewModel.gems,
+                seeds: seedViewModel.seeds,
                 onLongPress: { coordinate in
-                    gemViewModel.startGemCreation(at: coordinate)
+                    seedViewModel.startSeedCreation(at: coordinate)
                 },
-                onGemTapped: { gem in
-                    gemViewModel.selectGem(gem)
-                }
+                onSeedTapped: { seed in
+                    seedViewModel.selectSeed(seed)
+                },
+                pendingSeed: seedViewModel.pendingSeed,
+                onPendingSeedDrag: { coordinate in
+                    seedViewModel.updatePendingSeedPosition(coordinate)
+                },
+                onPendingSeedConfirm: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        seedViewModel.confirmPendingSeed()
+                    }
+                },
+                onPendingSeedCancel: {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        seedViewModel.cancelPendingSeed()
+                    }
+                },
+                onVisibleBoundsChanged: { bounds in
+                    visibleBounds = bounds
+                },
+                snapToLocationTrigger: $snapToLocationTrigger
             )
             .ignoresSafeArea()
+
+            // Top bar buttons — trip list (leading) and offline map (trailing)
+            VStack {
+                HStack {
+                    // Trip list button
+                    Button {
+                        tripListViewModel.loadTrips()
+                        showTripList = true
+                    } label: {
+                        Image(systemName: "list.bullet")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .frame(width: 40, height: 40)
+                            .background(.thinMaterial, in: Circle())
+                            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                    }
+                    .padding(.leading, 16)
+                    .padding(.top, 60)
+
+                    Spacer()
+
+                    VStack(spacing: 12) {
+                        OfflineMapButton(
+                            packCount: offlineManager.packs.count,
+                            action: { showOfflineSheet = true }
+                        )
+
+                        Button {
+                            snapToLocationTrigger.toggle()
+                        } label: {
+                            Image(systemName: "location.fill")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .frame(width: 40, height: 40)
+                                .background(.thinMaterial, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        }
+                    }
+                    .padding(.trailing, 16)
+                    .padding(.top, 60)
+                }
+                Spacer()
+            }
 
             // Recording controls overlay
             VStack {
@@ -66,82 +145,100 @@ struct ContentView: View {
                         }
                     }
                     .padding()
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                     .padding(.top)
                 }
 
                 Spacer()
 
-                // Gem creation sheets (anchored to bottom)
-                if gemViewModel.isShowingTypePicker {
-                    GemTypePicker(
+                // Seed creation sheets (anchored to bottom)
+                if seedViewModel.isShowingTypePicker {
+                    SeedTypePicker(
                         onSelect: { type in
-                            gemViewModel.selectType(type)
+                            seedViewModel.selectType(type)
                         },
                         onCancel: {
-                            gemViewModel.cancelCreation()
+                            seedViewModel.cancelCreation()
                         }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
                 }
 
-                if gemViewModel.isShowingQuickAdd,
-                   let type = gemViewModel.pendingGemType,
-                   let coord = gemViewModel.pendingGemCoordinate
+                if seedViewModel.isShowingQuickAdd,
+                   let type = seedViewModel.pendingSeedType,
+                   let coord = seedViewModel.pendingSeedCoordinate
                 {
-                    GemQuickAdd(
-                        gemType: type,
+                    SeedQuickAdd(
+                        seedType: type,
                         coordinate: coord,
                         onSave: { title, notes in
-                            gemViewModel.saveGem(title: title, notes: notes)
+                            seedViewModel.saveSeed(title: title, notes: notes)
                         },
                         onCancel: {
-                            gemViewModel.cancelCreation()
+                            seedViewModel.cancelCreation()
                         }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
                 }
 
-                if gemViewModel.isShowingDetail, let gem = gemViewModel.selectedGem {
-                    GemDetailSheet(
-                        gem: gem,
+                if seedViewModel.isShowingDetail, let seed = seedViewModel.selectedSeed {
+                    SeedDetailSheet(
+                        seed: seed,
                         onDismiss: {
-                            gemViewModel.dismissDetail()
+                            seedViewModel.dismissDetail()
                         }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
                 }
 
-                // Record / stop button at bottom (hidden during gem sheets)
-                if !gemViewModel.isShowingTypePicker
-                    && !gemViewModel.isShowingQuickAdd
-                    && !gemViewModel.isShowingDetail
+                // Seed quick-drop bar + record/stop button (hidden during seed sheets)
+                if !seedViewModel.isShowingTypePicker
+                    && !seedViewModel.isShowingQuickAdd
+                    && !seedViewModel.isShowingDetail
                 {
-                    Button {
+                    VStack(spacing: 16) {
+                        // Quick-drop seed bar — only visible while recording
                         if viewModel.isRecording {
-                            viewModel.stopRecording()
-                        } else {
-                            handleRecordTap()
-                        }
-                    } label: {
-                        Circle()
-                            .fill(viewModel.isRecording ? .red : .green)
-                            .frame(width: 64, height: 64)
-                            .overlay {
-                                Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
-                                    .font(.title)
-                                    .foregroundStyle(.white)
+                            SeedQuickDropBar { type in
+                                guard let location = viewModel.currentLocation else { return }
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    seedViewModel.quickDropSeed(
+                                        type: type,
+                                        at: location.coordinate
+                                    )
+                                }
                             }
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+
+                        Button {
+                            if viewModel.isRecording {
+                                viewModel.stopRecording()
+                            } else {
+                                handleRecordTap()
+                            }
+                        } label: {
+                            Circle()
+                                .fill(viewModel.isRecording ? SaplingColors.stopRecording : SaplingColors.recording)
+                                .frame(width: 64, height: 64)
+                                .overlay {
+                                    Image(systemName: viewModel.isRecording ? "stop.fill" : "record.circle")
+                                        .font(.title)
+                                        .foregroundStyle(.white)
+                                }
+                        }
+                        .padding(.bottom, 40)
                     }
-                    .padding(.bottom, 40)
                 }
             }
-            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingTypePicker)
-            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingQuickAdd)
-            .animation(.easeInOut(duration: 0.25), value: gemViewModel.isShowingDetail)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingTypePicker)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingQuickAdd)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingDetail)
+            .animation(.easeInOut(duration: 0.25), value: viewModel.isRecording)
+            .animation(.easeInOut(duration: 0.25), value: seedViewModel.pendingSeed)
 
             // Background location permission modal
             if showBackgroundModal {
@@ -167,6 +264,49 @@ struct ContentView: View {
             }
         }
         .animation(.easeInOut(duration: 0.25), value: showBackgroundModal)
+        .sheet(isPresented: Binding(
+            get: { viewModel.lastTripSummary != nil },
+            set: { if !$0 { viewModel.dismissTripSummary() } }
+        )) {
+            if let summary = viewModel.lastTripSummary {
+                TripSummarySheet(
+                    summary: summary,
+                    trackCoordinates: viewModel.lastTripTrack,
+                    onDismiss: {
+                        viewModel.dismissTripSummary()
+                    }
+                )
+            }
+        }
+        .sheet(isPresented: $showOfflineSheet) {
+            OfflineMapSheet(
+                manager: offlineManager,
+                visibleBounds: visibleBounds,
+                onDismiss: { showOfflineSheet = false }
+            )
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showTripList) {
+            TripListView(viewModel: tripListViewModel)
+                .presentationDetents([.medium, .large])
+        }
+        .alert("Error", isPresented: Binding(
+            get: { viewModel.lastError != nil || seedViewModel.lastError != nil },
+            set: { if !$0 { viewModel.lastError = nil; seedViewModel.lastError = nil } }
+        )) {
+            Button("OK") { viewModel.lastError = nil; seedViewModel.lastError = nil }
+        } message: {
+            Text(viewModel.lastError ?? seedViewModel.lastError ?? "An unknown error occurred.")
+        }
+        .alert("Database Error", isPresented: Binding(
+            get: { initError != nil },
+            set: { if !$0 { initError = nil } }
+        )) {
+            Button("OK") { initError = nil }
+        } message: {
+            Text(initError ?? "An unknown error occurred.")
+        }
+        .fontDesign(.rounded)
     }
 
     // MARK: - Record Tap Authorization Check
@@ -201,29 +341,45 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Formatters
+}
 
-    private func formatDistance(_ meters: Double) -> String {
-        if meters < 1000 {
-            return String(format: "%.0f m", meters)
-        } else {
-            return String(format: "%.1f km", meters / 1000)
+// MARK: - Seed Quick-Drop Bar
+
+/// Horizontal row of 5 seed type buttons in a frosted glass pill.
+struct SeedQuickDropBar: View {
+    let onSelect: (FfiSeedType) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(allSeedTypes, id: \.displayName) { type in
+                Button {
+                    onSelect(type)
+                } label: {
+                    VStack(spacing: 4) {
+                        Circle()
+                            .fill(type.color)
+                            .frame(width: 40, height: 40)
+                            .overlay {
+                                Image(systemName: type.sfSymbol)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.white)
+                            }
+                            .overlay {
+                                Circle()
+                                    .stroke(.white, lineWidth: 2)
+                            }
+
+                        Text(type.displayName)
+                            .font(.caption2)
+                            .foregroundStyle(.primary)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
         }
-    }
-
-    private func formatElevation(_ meters: Double) -> String {
-        String(format: "%.0f m", meters)
-    }
-
-    private func formatDuration(_ ms: Int64) -> String {
-        let totalSeconds = ms / 1000
-        let hours = totalSeconds / 3600
-        let minutes = (totalSeconds % 3600) / 60
-        let seconds = totalSeconds % 60
-        if hours > 0 {
-            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-        } else {
-            return String(format: "%d:%02d", minutes, seconds)
-        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 10)
+        .background(.regularMaterial, in: Capsule())
+        .padding(.horizontal, 16)
     }
 }

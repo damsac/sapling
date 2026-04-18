@@ -1,25 +1,25 @@
 import SwiftUI
 
-struct GemDetailSheet: View {
-    let gem: FfiGem
+struct SeedDetailSheet: View {
+    let seed: FfiSeed
     let onDismiss: () -> Void
 
     var body: some View {
         VStack(spacing: 16) {
             // Header: type badge + title + dismiss
             HStack(spacing: 10) {
-                Image(systemName: gem.gemType.sfSymbol)
+                Image(systemName: seed.seedType.sfSymbol)
                     .font(.subheadline)
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)
-                    .background(gem.gemType.color, in: Circle())
+                    .background(seed.seedType.color, in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(gem.title)
-                        .font(.headline)
-                    Text(gem.gemType.displayName)
-                        .font(.caption)
-                        .foregroundStyle(gem.gemType.color)
+                    Text(seed.title)
+                        .font(.headline.weight(.semibold))
+                    Text(seed.seedType.displayName)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(seed.seedType.color)
                 }
 
                 Spacer()
@@ -27,12 +27,12 @@ struct GemDetailSheet: View {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 }
             }
 
             // Notes
-            if let notes = gem.notes, !notes.isEmpty {
+            if let notes = seed.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
@@ -41,17 +41,17 @@ struct GemDetailSheet: View {
 
             // Details grid
             VStack(spacing: 8) {
-                detailRow(icon: "location", label: "Location", value: formatCoordinate(gem.latitude, gem.longitude))
+                detailRow(icon: "location", label: "Location", value: formatCoordinate(seed.latitude, seed.longitude))
 
-                if let elevation = gem.elevation {
+                if let elevation = seed.elevation {
                     detailRow(icon: "arrow.up.right", label: "Elevation", value: String(format: "%.0f m", elevation))
                 }
 
-                detailRow(icon: "clock", label: "Created", value: formatDate(gem.createdAt))
+                detailRow(icon: "clock", label: "Created", value: formatDate(seed.createdAt))
             }
         }
         .padding(20)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
     }
 
@@ -60,11 +60,11 @@ struct GemDetailSheet: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
                 .frame(width: 16)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary)
             Spacer()
             Text(value)
                 .font(.caption.monospacedDigit())
