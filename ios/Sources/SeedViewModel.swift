@@ -164,4 +164,27 @@ class SeedViewModel {
         selectedSeed = nil
         isShowingDetail = false
     }
+
+    func deleteSeed(_ seed: FfiSeed) {
+        do {
+            try core.deleteSeed(id: seed.id)
+            seeds.removeAll { $0.id == seed.id }
+            dismissDetail()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func updateSeed(_ seed: FfiSeed, title: String, notes: String?) {
+        do {
+            let input = FfiUpdateSeedInput(title: title, notes: notes, tags: seed.tags)
+            let updated = try core.updateSeed(id: seed.id, input: input)
+            if let idx = seeds.firstIndex(where: { $0.id == seed.id }) {
+                seeds[idx] = updated
+            }
+            selectedSeed = updated
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
 }

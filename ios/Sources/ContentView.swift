@@ -9,6 +9,7 @@ struct ContentView: View {
     @State private var showBackgroundModal: Bool = false
     @State private var showOfflineSheet: Bool = false
     @State private var showTripList: Bool = false
+    @State private var showSeedList: Bool = false
     @State private var visibleBounds: MLNCoordinateBounds?
     @State private var initError: String? = nil
     @State private var snapToLocationTrigger: Bool = false
@@ -72,17 +73,30 @@ struct ContentView: View {
             // Top bar buttons — trip list (leading) and offline map (trailing)
             VStack {
                 HStack {
-                    // Trip list button
-                    Button {
-                        tripListViewModel.loadTrips()
-                        showTripList = true
-                    } label: {
-                        Image(systemName: "list.bullet")
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(.primary)
-                            .frame(width: 40, height: 40)
-                            .background(.thinMaterial, in: Circle())
-                            .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                    // Top-left buttons — trips and seeds
+                    VStack(spacing: 12) {
+                        Button {
+                            tripListViewModel.loadTrips()
+                            showTripList = true
+                        } label: {
+                            Image(systemName: "list.bullet")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .frame(width: 40, height: 40)
+                                .background(.thinMaterial, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        }
+
+                        Button {
+                            showSeedList = true
+                        } label: {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .frame(width: 40, height: 40)
+                                .background(.thinMaterial, in: Circle())
+                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        }
                     }
                     .padding(.leading, 16)
                     .padding(.top, 60)
@@ -186,9 +200,9 @@ struct ContentView: View {
                 if seedViewModel.isShowingDetail, let seed = seedViewModel.selectedSeed {
                     SeedDetailSheet(
                         seed: seed,
-                        onDismiss: {
-                            seedViewModel.dismissDetail()
-                        }
+                        onDismiss: { seedViewModel.dismissDetail() },
+                        onDelete: { seedViewModel.deleteSeed($0) },
+                        onUpdate: { seedViewModel.updateSeed($0, title: $1, notes: $2) }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
@@ -288,6 +302,10 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showTripList) {
             TripListView(viewModel: tripListViewModel)
+                .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showSeedList) {
+            SeedListView(viewModel: seedViewModel)
                 .presentationDetents([.medium, .large])
         }
         .alert("Error", isPresented: Binding(

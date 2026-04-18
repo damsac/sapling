@@ -514,6 +514,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func createSeed(input: FfiCreateSeedInput) throws  -> FfiSeed
     
+    func deleteSeed(id: String) throws 
+    
     func deleteTrip(id: String) throws 
     
     func getSeed(id: String) throws  -> FfiSeed?
@@ -533,6 +535,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     func startRecording(name: String?) throws  -> String
     
     func stopRecording() throws  -> FfiTripSummary?
+    
+    func updateSeed(id: String, input: FfiUpdateSeedInput) throws  -> FfiSeed
     
 }
 /**
@@ -614,6 +618,13 @@ open func createSeed(input: FfiCreateSeedInput)throws  -> FfiSeed  {
 })
 }
     
+open func deleteSeed(id: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_delete_seed(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
+}
+    
 open func deleteTrip(id: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_delete_trip(self.uniffiClonePointer(),
         FfiConverterString.lower(id),$0
@@ -686,6 +697,15 @@ open func startRecording(name: String?)throws  -> String  {
 open func stopRecording()throws  -> FfiTripSummary?  {
     return try  FfiConverterOptionTypeFfiTripSummary.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_stop_recording(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
+open func updateSeed(id: String, input: FfiUpdateSeedInput)throws  -> FfiSeed  {
+    return try  FfiConverterTypeFfiSeed_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_update_seed(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterTypeFfiUpdateSeedInput_lower(input),$0
     )
 })
 }
@@ -1354,6 +1374,84 @@ public func FfiConverterTypeFfiTripSummary_lower(_ value: FfiTripSummary) -> Rus
     return FfiConverterTypeFfiTripSummary.lower(value)
 }
 
+
+public struct FfiUpdateSeedInput {
+    public var title: String
+    public var notes: String?
+    public var tags: [String]
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(title: String, notes: String?, tags: [String]) {
+        self.title = title
+        self.notes = notes
+        self.tags = tags
+    }
+}
+
+#if compiler(>=6)
+extension FfiUpdateSeedInput: Sendable {}
+#endif
+
+
+extension FfiUpdateSeedInput: Equatable, Hashable {
+    public static func ==(lhs: FfiUpdateSeedInput, rhs: FfiUpdateSeedInput) -> Bool {
+        if lhs.title != rhs.title {
+            return false
+        }
+        if lhs.notes != rhs.notes {
+            return false
+        }
+        if lhs.tags != rhs.tags {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(title)
+        hasher.combine(notes)
+        hasher.combine(tags)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiUpdateSeedInput: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiUpdateSeedInput {
+        return
+            try FfiUpdateSeedInput(
+                title: FfiConverterString.read(from: &buf), 
+                notes: FfiConverterOptionString.read(from: &buf), 
+                tags: FfiConverterSequenceString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiUpdateSeedInput, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.title, into: &buf)
+        FfiConverterOptionString.write(value.notes, into: &buf)
+        FfiConverterSequenceString.write(value.tags, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiUpdateSeedInput_lift(_ buf: RustBuffer) throws -> FfiUpdateSeedInput {
+    return try FfiConverterTypeFfiUpdateSeedInput.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiUpdateSeedInput_lower(_ value: FfiUpdateSeedInput) -> RustBuffer {
+    return FfiConverterTypeFfiUpdateSeedInput.lower(value)
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 
@@ -1885,6 +1983,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_create_seed() != 2323) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_delete_seed() != 41102) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_delete_trip() != 51618) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -1913,6 +2014,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_stop_recording() != 6314) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_update_seed() != 12917) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_constructor_saplingcore_new() != 24575) {

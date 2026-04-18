@@ -165,6 +165,13 @@ pub struct FfiCreateSeedInput {
 }
 
 #[derive(uniffi::Record)]
+pub struct FfiUpdateSeedInput {
+    pub title: String,
+    pub notes: Option<String>,
+    pub tags: Vec<String>,
+}
+
+#[derive(uniffi::Record)]
 pub struct FfiRecordingUpdate {
     pub state: FfiActivityState,
     pub distance_m: f64,
@@ -321,6 +328,21 @@ impl SaplingCore {
             .into_iter()
             .map(|g| g.into())
             .collect())
+    }
+
+    pub fn delete_seed(&self, id: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().delete_seed(&id)?;
+        Ok(())
+    }
+
+    pub fn update_seed(&self, id: String, input: FfiUpdateSeedInput) -> Result<FfiSeed, FfiError> {
+        let core_input = sapling_core::models::UpdateSeedInput {
+            title: input.title,
+            notes: input.notes,
+            tags: input.tags,
+        };
+        let seed = self.store.lock().unwrap().update_seed(&id, &core_input)?;
+        Ok(seed.into())
     }
 
     // -- Track points --

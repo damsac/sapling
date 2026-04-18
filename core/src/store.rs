@@ -386,6 +386,42 @@ impl Store {
         Ok(())
     }
 
+    /// Soft-delete a seed by setting deleted_at.
+    pub fn delete_seed(&self, id: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE seeds SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, id],
+        )?;
+        Ok(())
+    }
+
+    /// Update a seed's user-editable fields (title, notes, tags).
+    pub fn update_seed(&self, id: &str, input: &crate::models::UpdateSeedInput) -> Result<Seed, SaplingError> {
+        let existing = self.get_seed(id)?
+            .ok_or_else(|| SaplingError::NotFound(format!("seed {id} not found")))?;
+        let now = chrono::Utc::now().to_rfc3339();
+        let tags_json = serde_json::to_string(&input.tags)
+            .map_err(|e| SaplingError::InvalidInput(e.to_string()))?;
+        self.conn.execute(
+            "UPDATE seeds SET title = ?1, notes = ?2, tags = ?3, updated_at = ?4 WHERE id = ?5 AND deleted_at IS NULL",
+            rusqlite::params![input.title, input.notes, tags_json, now, id],
+        )?;
+        Ok(Seed {
+            id: existing.id,
+            seed_type: existing.seed_type,
+            title: input.title.clone(),
+            notes: input.notes.clone(),
+            latitude: existing.latitude,
+            longitude: existing.longitude,
+            elevation: existing.elevation,
+            confidence: existing.confidence,
+            tags: input.tags.clone(),
+            created_at: existing.created_at,
+            updated_at: now,
+        })
+    }
+
     /// Full-text search across seed title, notes, and tags.
     pub fn search_seeds(&self, query: &str) -> Result<Vec<Seed>, SaplingError> {
         let mut stmt = self.conn.prepare(

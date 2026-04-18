@@ -276,6 +276,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_add_location(void*_Nonnull ptr, 
 RustBuffer uniffi_sapling_fn_method_saplingcore_create_seed(void*_Nonnull ptr, RustBuffer input, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_DELETE_SEED
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_DELETE_SEED
+void uniffi_sapling_fn_method_saplingcore_delete_seed(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_DELETE_TRIP
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_DELETE_TRIP
 void uniffi_sapling_fn_method_saplingcore_delete_trip(void*_Nonnull ptr, RustBuffer id, RustCallStatus *_Nonnull out_status
@@ -324,6 +329,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_start_recording(void*_Nonnull pt
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_STOP_RECORDING
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_STOP_RECORDING
 RustBuffer uniffi_sapling_fn_method_saplingcore_stop_recording(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_UPDATE_SEED
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_UPDATE_SEED
+RustBuffer uniffi_sapling_fn_method_saplingcore_update_seed(void*_Nonnull ptr, RustBuffer id, RustBuffer input, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_SAPLING_RUSTBUFFER_ALLOC
@@ -618,6 +628,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_create_seed(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_DELETE_SEED
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_DELETE_SEED
+uint16_t uniffi_sapling_checksum_method_saplingcore_delete_seed(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_DELETE_TRIP
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_DELETE_TRIP
 uint16_t uniffi_sapling_checksum_method_saplingcore_delete_trip(void
@@ -675,6 +691,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_start_recording(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_STOP_RECORDING
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_STOP_RECORDING
 uint16_t uniffi_sapling_checksum_method_saplingcore_stop_recording(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_UPDATE_SEED
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_UPDATE_SEED
+uint16_t uniffi_sapling_checksum_method_saplingcore_update_seed(void
     
 );
 #endif

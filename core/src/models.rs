@@ -43,6 +43,14 @@ pub struct CreateSeedInput {
     pub tags: Vec<String>,
 }
 
+/// Input for updating an existing Seed's user-editable fields.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UpdateSeedInput {
+    pub title: String,
+    pub notes: Option<String>,
+    pub tags: Vec<String>,
+}
+
 /// The type/category of a Seed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SeedType {
