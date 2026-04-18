@@ -41,6 +41,9 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSLocationWhenInUseUsageDescription: Sapling uses your location to show where you are on the map and record your trail.
+        NSLocationAlwaysAndWhenInUseUsageDescription: Sapling needs background location access to keep recording your trail when the app is in your pocket.
+        UIBackgroundModes:
+          - location
   SaplingTests:
     type: bundle.unit-test
     platform: iOS
