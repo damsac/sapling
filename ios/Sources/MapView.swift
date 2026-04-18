@@ -177,8 +177,8 @@ struct TrailMapView: View {
                     // Keep the map north-up. Rotation would break the overlay
                     // math and also conflict with the spatial-awareness goal
                     // (orient yourself to the world, not the screen).
-                    controller.mapView.allowsRotating = false
-                    controller.mapView.allowsTilting = false
+                    controller.mapView.isRotateEnabled = false
+                    controller.mapView.isPitchEnabled = false
                 }
 
                 // MARK: - Heading Wedge
