@@ -30,6 +30,13 @@ class RecordingViewModel {
         self.core = core
     }
 
+    /// Start delivering location fixes without recording a trip.
+    /// Call once authorization is at least `.authorizedWhenInUse` so the
+    /// blue dot and snap-to-location work before the user hits Record.
+    func startLocationUpdates() {
+        locationProvider.startUpdates()
+    }
+
     func startRecording(name: String? = nil) {
         do {
             let tripId = try core.startRecording(name: name)
@@ -43,7 +50,9 @@ class RecordingViewModel {
 
             locationProvider.startUpdates()
 
-            recordingTask = Task {
+            // Detached so the blocking FFI + SQLite writes run off the main
+            // thread. UI updates hop back via MainActor.run.
+            recordingTask = Task.detached { [self] in
                 var lastTimestamp: TimeInterval = 0
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(100))
