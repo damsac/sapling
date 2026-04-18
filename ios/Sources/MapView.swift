@@ -7,6 +7,7 @@ import SwiftUI
 struct TrailMapView: View {
     let trackCoordinates: [CLLocationCoordinate2D]
     let userLocation: CLLocation?
+    let userHeading: CLHeading?
     let seeds: [FfiSeed]
     var onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
     var onSeedTapped: ((FfiSeed) -> Void)? = nil
@@ -28,6 +29,9 @@ struct TrailMapView: View {
         zoom: 14
     )
     @State private var hasInitiallyNavigated = false
+    /// Live snapshot of the map's projection, so overlays use MapLibre's real
+    /// coordinate→point conversion instead of a hand-rolled approximation.
+    @State private var mapProxy: MapViewProxy?
 
     /// Drag offset for the pending seed pin (in points, from its dropped position).
     @State private var pendingDragOffset: CGSize = .zero
@@ -166,6 +170,48 @@ struct TrailMapView: View {
                         camera = .center(coordinate, zoom: max(currentZoom, 15))
                     }
                 }
+                .onMapViewProxyUpdate(updateMode: .realtime) { proxy in
+                    mapProxy = proxy
+                }
+                .unsafeMapViewControllerModifier { controller in
+                    // Keep the map north-up. Rotation would break the overlay
+                    // math and also conflict with the spatial-awareness goal
+                    // (orient yourself to the world, not the screen).
+                    controller.mapView.isRotateEnabled = false
+                    controller.mapView.isPitchEnabled = false
+                }
+
+                // MARK: - Heading Wedge
+
+                // A small arrow anchored to the user-location dot, rotated to
+                // show where the phone is pointing. Hidden until the compass
+                // has a valid reading (negative headingAccuracy = uncalibrated).
+                if let userCoord = userLocation?.coordinate,
+                   let heading = userHeading,
+                   heading.headingAccuracy >= 0 {
+                    let screenPos = coordinateToScreen(userCoord, in: geo.size)
+                    let direction = heading.trueHeading >= 0
+                        ? heading.trueHeading
+                        : heading.magneticHeading
+                    // Arrow sits 16pt from the dot, in the heading direction.
+                    // North is up, positive Y is down, so cos flips sign.
+                    let radians = direction * .pi / 180
+                    let offsetX = sin(radians) * 16
+                    let offsetY = -cos(radians) * 16
+
+                    ZStack {
+                        // White outline so the arrow reads on any map style
+                        Image(systemName: "arrowtriangle.up.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.white)
+                        Image(systemName: "arrowtriangle.up.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.blue)
+                    }
+                    .rotationEffect(.degrees(direction))
+                    .position(x: screenPos.x + offsetX, y: screenPos.y + offsetY)
+                    .allowsHitTesting(false)
+                }
 
                 // MARK: - Pending Seed Overlay
 
@@ -297,12 +343,18 @@ struct TrailMapView: View {
 
     // MARK: - Coordinate ↔ Screen Conversion
 
-    /// Approximate conversion from coordinate to screen position.
-    /// Uses the camera center + zoom to compute a Mercator projection.
+    /// Convert a geographic coordinate to a screen point.
+    /// Prefers MapLibre's real projection via MapViewProxy (accurate under
+    /// pan/zoom); falls back to a Web Mercator approximation during the brief
+    /// window before the proxy is populated.
     private func coordinateToScreen(
         _ coordinate: CLLocationCoordinate2D,
         in size: CGSize
     ) -> CGPoint {
+        if let proxy = mapProxy {
+            return proxy.convert(coordinate, toPointTo: nil)
+        }
+
         let center = cameraCenter
         let scale = pow(2.0, currentZoom) * 256 / 360
 

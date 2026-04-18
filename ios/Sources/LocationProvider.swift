@@ -2,12 +2,22 @@ import CoreLocation
 import Observation
 
 @Observable
-class LocationProvider {
+class LocationProvider: NSObject, CLLocationManagerDelegate {
     var currentLocation: CLLocation?
+    var currentHeading: CLHeading?
     var isAuthorized: Bool = false
 
-    private var updateTask: Task<Void, Never>?
-    private var backgroundSession: CLBackgroundActivitySession?
+    @ObservationIgnored private var updateTask: Task<Void, Never>?
+    @ObservationIgnored private var backgroundSession: CLBackgroundActivitySession?
+    @ObservationIgnored private let headingManager = CLLocationManager()
+
+    override init() {
+        super.init()
+        headingManager.delegate = self
+        // Only emit heading callbacks after a 3° change; cuts down on noise
+        // from the magnetometer while stationary.
+        headingManager.headingFilter = 3
+    }
 
     /// Current authorization status without triggering a permission prompt.
     static var authorizationStatus: CLAuthorizationStatus {
@@ -18,6 +28,7 @@ class LocationProvider {
         // Create a background activity session so iOS keeps delivering
         // location updates when the app is backgrounded
         backgroundSession = CLBackgroundActivitySession()
+        headingManager.startUpdatingHeading()
 
         updateTask = Task {
             do {
@@ -45,5 +56,17 @@ class LocationProvider {
         updateTask = nil
         backgroundSession?.invalidate()
         backgroundSession = nil
+        headingManager.stopUpdatingHeading()
+    }
+
+    // MARK: - CLLocationManagerDelegate
+
+    nonisolated func locationManager(
+        _ manager: CLLocationManager,
+        didUpdateHeading newHeading: CLHeading
+    ) {
+        Task { @MainActor in
+            self.currentHeading = newHeading
+        }
     }
 }

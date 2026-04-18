@@ -42,6 +42,7 @@ struct ContentView: View {
             TrailMapView(
                 trackCoordinates: viewModel.trackCoordinates,
                 userLocation: viewModel.currentLocation,
+                userHeading: viewModel.currentHeading,
                 seeds: seedViewModel.seeds,
                 onLongPress: { coordinate in
                     seedViewModel.startSeedCreation(at: coordinate)
@@ -100,6 +101,13 @@ struct ContentView: View {
                     }
                     .padding(.leading, 16)
                     .padding(.top, 60)
+
+                    Spacer()
+
+                    // Live compass — N always points to true north; rotates
+                    // as the phone rotates so you can orient yourself.
+                    CompassWidget(heading: viewModel.currentHeading)
+                        .padding(.top, 60)
 
                     Spacer()
 
@@ -409,5 +417,56 @@ struct SeedQuickDropBar: View {
         .padding(.vertical, 10)
         .background(.regularMaterial, in: Capsule())
         .padding(.horizontal, 16)
+    }
+}
+
+// MARK: - Compass Widget
+
+/// A floating compass rose. The "N" label points to true north at all times,
+/// rotating against the phone's heading. When the heading is not yet valid
+/// (uncalibrated magnetometer), renders a neutral placeholder.
+struct CompassWidget: View {
+    let heading: CLHeading?
+
+    private var direction: Double? {
+        guard let heading, heading.headingAccuracy >= 0 else { return nil }
+        return heading.trueHeading >= 0 ? heading.trueHeading : heading.magneticHeading
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(.thinMaterial)
+                .frame(width: 44, height: 44)
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+
+            if let direction {
+                ZStack {
+                    // North marker — red label plus a tick emanating inward
+                    VStack(spacing: 1) {
+                        Text("N")
+                            .font(.system(size: 10, weight: .heavy))
+                            .foregroundStyle(.red)
+                        Rectangle()
+                            .fill(.red)
+                            .frame(width: 2, height: 6)
+                        Spacer()
+                        Rectangle()
+                            .fill(.secondary)
+                            .frame(width: 1, height: 4)
+                        Text("S")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(width: 44, height: 44)
+                }
+                .rotationEffect(.degrees(-direction))
+            } else {
+                Image(systemName: "location.north.line")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .accessibilityLabel("Compass, \(direction.map { "pointing \(Int($0))°" } ?? "calibrating")")
     }
 }
