@@ -21,7 +21,10 @@ class LocationProvider {
 
         updateTask = Task {
             do {
-                for try await update in CLLocationUpdate.liveUpdates() {
+                // .fitness preset keeps updates flowing while stationary.
+                // Default preset suppresses updates to save battery, which
+                // delays the first fix until motion is detected.
+                for try await update in CLLocationUpdate.liveUpdates(.fitness) {
                     guard let location = update.location else { continue }
                     // Skip invalid readings (negative means CoreLocation has no fix)
                     guard location.horizontalAccuracy >= 0 else { continue }

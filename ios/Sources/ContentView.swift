@@ -307,6 +307,16 @@ struct ContentView: View {
             Text(initError ?? "An unknown error occurred.")
         }
         .fontDesign(.rounded)
+        .onAppear {
+            // Start location stream on launch if the user has already granted
+            // permission, so the blue dot and snap-to-location work before
+            // they hit Record. If status is .notDetermined, we let the first
+            // Record tap trigger the prompt.
+            let status = LocationProvider.authorizationStatus
+            if status == .authorizedWhenInUse || status == .authorizedAlways {
+                viewModel.startLocationUpdates()
+            }
+        }
     }
 
     // MARK: - Record Tap Authorization Check

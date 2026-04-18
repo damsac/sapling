@@ -17,7 +17,7 @@ impl Store {
         // Pragmas
         conn.execute_batch(
             "PRAGMA journal_mode = WAL;
-             PRAGMA synchronous = FULL;
+             PRAGMA synchronous = NORMAL;
              PRAGMA foreign_keys = ON;",
         )?;
 

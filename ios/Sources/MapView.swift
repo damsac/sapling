@@ -102,6 +102,22 @@ struct TrailMapView: View {
                         .color(FfiSeedType.custom.uiColor)
                         .strokeWidth(0)
                         .predicate(NSPredicate(format: "seedType == %@", "Custom"))
+
+                    // User location blue dot — drawn above seeds so it's always visible.
+                    let userPoints = userLocationFeatures()
+                    let userSource = ShapeSource(identifier: "user-location") {
+                        userPoints
+                    }
+
+                    CircleStyleLayer(identifier: "user-location-halo", source: userSource)
+                        .radius(10)
+                        .color(.white)
+                        .strokeWidth(0)
+
+                    CircleStyleLayer(identifier: "user-location-dot", source: userSource)
+                        .radius(7)
+                        .color(.systemBlue)
+                        .strokeWidth(0)
                 }
                 .mapControls {
                     CompassView()
@@ -369,6 +385,13 @@ struct TrailMapView: View {
     }
 
     // MARK: - Seed Feature Helpers
+
+    private func userLocationFeatures() -> [MLNPointFeature] {
+        guard let coord = userLocation?.coordinate else { return [] }
+        let feature = MLNPointFeature()
+        feature.coordinate = coord
+        return [feature]
+    }
 
     private func seedPointFeatures() -> [MLNPointFeature] {
         return seeds.map { seed in
