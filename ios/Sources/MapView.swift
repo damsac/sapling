@@ -29,6 +29,9 @@ struct TrailMapView: View {
         zoom: 14
     )
     @State private var hasInitiallyNavigated = false
+    /// Live snapshot of the map's projection, so overlays use MapLibre's real
+    /// coordinate→point conversion instead of a hand-rolled approximation.
+    @State private var mapProxy: MapViewProxy?
 
     /// Drag offset for the pending seed pin (in points, from its dropped position).
     @State private var pendingDragOffset: CGSize = .zero
@@ -166,6 +169,16 @@ struct TrailMapView: View {
                     if let coordinate = userLocation?.coordinate {
                         camera = .center(coordinate, zoom: max(currentZoom, 15))
                     }
+                }
+                .onMapViewProxyUpdate(updateMode: .realtime) { proxy in
+                    mapProxy = proxy
+                }
+                .unsafeMapViewControllerModifier { controller in
+                    // Keep the map north-up. Rotation would break the overlay
+                    // math and also conflict with the spatial-awareness goal
+                    // (orient yourself to the world, not the screen).
+                    controller.mapView.allowsRotating = false
+                    controller.mapView.allowsTilting = false
                 }
 
                 // MARK: - Heading Wedge
@@ -330,12 +343,18 @@ struct TrailMapView: View {
 
     // MARK: - Coordinate ↔ Screen Conversion
 
-    /// Approximate conversion from coordinate to screen position.
-    /// Uses the camera center + zoom to compute a Mercator projection.
+    /// Convert a geographic coordinate to a screen point.
+    /// Prefers MapLibre's real projection via MapViewProxy (accurate under
+    /// pan/zoom); falls back to a Web Mercator approximation during the brief
+    /// window before the proxy is populated.
     private func coordinateToScreen(
         _ coordinate: CLLocationCoordinate2D,
         in size: CGSize
     ) -> CGPoint {
+        if let proxy = mapProxy {
+            return proxy.convert(coordinate, toPointTo: nil)
+        }
+
         let center = cameraCenter
         let scale = pow(2.0, currentZoom) * 256 / 360
 
