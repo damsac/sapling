@@ -138,6 +138,7 @@ struct OfflineMapSheet: View {
                     }
                 }
             }
+            .tint(SaplingColors.brand)
             .navigationTitle("Offline Maps")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -298,9 +298,9 @@ struct TrailMapView: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(SaplingColors.bark)
                                 .padding(6)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                         }
                     }
                     .position(

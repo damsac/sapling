@@ -72,10 +72,9 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
 
-            // Top bar buttons — trip list (leading) and offline map (trailing)
+            // Top bar buttons — all on the left side
             VStack {
-                HStack {
-                    // Top-left buttons — trips and seeds
+                HStack(alignment: .top) {
                     VStack(spacing: 12) {
                         Button {
                             tripListViewModel.loadTrips()
@@ -83,9 +82,9 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "list.bullet")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(SaplingColors.ink)
                                 .frame(width: 40, height: 40)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                         }
 
@@ -94,25 +93,12 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "mappin.and.ellipse")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(SaplingColors.ink)
                                 .frame(width: 40, height: 40)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                         }
-                    }
-                    .padding(.leading, 16)
-                    .padding(.top, 60)
 
-                    Spacer()
-
-                    // Live compass — N always points to true north; rotates
-                    // as the phone rotates so you can orient yourself.
-                    CompassWidget(heading: viewModel.currentHeading)
-                        .padding(.top, 60)
-
-                    Spacer()
-
-                    VStack(spacing: 12) {
                         OfflineMapButton(
                             packCount: offlineManager.packs.count,
                             action: { showOfflineSheet = true }
@@ -123,15 +109,20 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "location.fill")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(SaplingColors.ink)
                                 .frame(width: 40, height: 40)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                         }
+
+                        CompassWidget(heading: viewModel.currentHeading)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 60)
+                    .padding(.leading, 16)
+                    .padding(.top, viewModel.isRecording ? 80 : 60)
+
+                    Spacer()
                 }
+
                 Spacer()
             }
 
@@ -139,37 +130,21 @@ struct ContentView: View {
             VStack {
                 // Stats bar at top when recording
                 if viewModel.isRecording {
-                    HStack(spacing: 16) {
-                        VStack {
-                            Text(formatDistance(viewModel.distanceMeters))
-                                .font(.title3.monospacedDigit())
-                                .fontWeight(.semibold)
-                            Text("Distance")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        VStack {
-                            Text(formatElevation(viewModel.elevationGain))
-                                .font(.title3.monospacedDigit())
-                                .fontWeight(.semibold)
-                            Text("Gain")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        VStack {
-                            Text(formatDuration(viewModel.elapsedMs))
-                                .font(.title3.monospacedDigit())
-                                .fontWeight(.semibold)
-                            Text("Time")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                    HStack(spacing: 0) {
+                        LiveStat(value: formatDistance(viewModel.distanceMeters), label: "Distance")
+                        Divider().frame(height: 32)
+                        LiveStat(value: formatElevation(viewModel.elevationGain), label: "Gain")
+                        Divider().frame(height: 32)
+                        LiveStat(value: formatDuration(viewModel.elapsedMs), label: "Time")
                     }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.top)
+                    .padding(.vertical, 12)
+                    .background(SaplingColors.parchment.opacity(0.92), in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(SaplingColors.brand.opacity(0.35), lineWidth: 1.5)
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
 
                 Spacer()
@@ -404,6 +379,25 @@ struct ContentView: View {
 
 }
 
+// MARK: - Live Recording Stat Cell
+
+private struct LiveStat: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.title3.monospacedDigit())
+                .fontWeight(.semibold)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(SaplingColors.bark)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 // MARK: - Seed Quick-Drop Bar
 
 /// Horizontal row of 5 seed type buttons in a frosted glass pill.
@@ -432,7 +426,7 @@ struct SeedQuickDropBar: View {
 
                         Text(type.displayName)
                             .font(.caption2)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(SaplingColors.ink)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -440,7 +434,7 @@ struct SeedQuickDropBar: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
+        .background(SaplingColors.parchment.opacity(0.92), in: Capsule())
         .padding(.horizontal, 16)
     }
 }
@@ -461,7 +455,7 @@ struct CompassWidget: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(.thinMaterial)
+                .fill(SaplingColors.parchment.opacity(0.92))
                 .frame(width: 44, height: 44)
                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 

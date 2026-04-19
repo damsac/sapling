@@ -64,45 +64,38 @@ struct TripDetailView: View {
     // MARK: - Stats Card
 
     private var statsCard: some View {
-        HStack(spacing: 16) {
-            VStack(spacing: 2) {
-                Text(formatDistance(trip.distanceM))
-                    .font(.title3.monospacedDigit())
-                    .fontWeight(.semibold)
-                Text("Distance")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+        VStack(spacing: 0) {
+            // Brand accent bar at top of card
+            RoundedRectangle(cornerRadius: 2)
+                .fill(SaplingColors.brand)
+                .frame(height: 3)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
 
-            VStack(spacing: 2) {
-                Text(formatDuration(trip.durationMs))
-                    .font(.title3.monospacedDigit())
-                    .fontWeight(.semibold)
-                Text("Time")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 0) {
+                DetailStat(value: formatDistance(trip.distanceM), label: "Distance")
+                Divider().frame(height: 32)
+                DetailStat(value: formatDuration(trip.durationMs), label: "Time")
+                Divider().frame(height: 32)
+                DetailStat(value: "+\(formatElevation(trip.elevationGain))", label: "Gain")
+                Divider().frame(height: 32)
+                DetailStat(value: "-\(formatElevation(trip.elevationLoss))", label: "Loss")
             }
+            .padding(.bottom, 14)
 
-            VStack(spacing: 2) {
-                Text("+\(formatElevation(trip.elevationGain))")
-                    .font(.title3.monospacedDigit())
-                    .fontWeight(.semibold)
-                Text("Gain")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-
-            VStack(spacing: 2) {
-                Text("-\(formatElevation(trip.elevationLoss))")
-                    .font(.title3.monospacedDigit())
-                    .fontWeight(.semibold)
-                Text("Loss")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            if trip.seedCount > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "leaf.fill")
+                        .font(.caption)
+                        .foregroundStyle(SaplingColors.brand)
+                    Text("\(trip.seedCount) seed\(trip.seedCount == 1 ? "" : "s") dropped")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.bottom, 12)
             }
         }
-        .padding()
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal, 16)
         .padding(.bottom, 40)
     }
@@ -115,5 +108,21 @@ struct TripDetailView: View {
             CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         }
     }
+}
 
+private struct DetailStat: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.title3.monospacedDigit())
+                .fontWeight(.semibold)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
 }

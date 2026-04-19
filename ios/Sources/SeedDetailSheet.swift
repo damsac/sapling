@@ -25,9 +25,11 @@ struct SeedDetailSheet: View {
                     if isEditing {
                         TextField("Title", text: $editTitle)
                             .font(.headline.weight(.semibold))
+                            .foregroundStyle(SaplingColors.ink)
                     } else {
                         Text(seed.title)
                             .font(.headline.weight(.semibold))
+                            .foregroundStyle(SaplingColors.ink)
                     }
                     Text(seed.seedType.displayName)
                         .font(.caption.weight(.medium))
@@ -56,7 +58,7 @@ struct SeedDetailSheet: View {
                     Button(action: onDismiss) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title3)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(SaplingColors.bark.opacity(0.5))
                     }
                 }
             }
@@ -65,13 +67,15 @@ struct SeedDetailSheet: View {
             if isEditing {
                 TextField("Notes (optional)", text: $editNotes, axis: .vertical)
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(SaplingColors.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .lineLimit(3...6)
+                    .padding(10)
+                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 10))
             } else if let notes = seed.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(SaplingColors.bark)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -86,6 +90,8 @@ struct SeedDetailSheet: View {
 
                     detailRow(icon: "clock", label: "Created", value: formatDate(seed.createdAt))
                 }
+                .padding(12)
+                .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
             }
 
             // Delete button
@@ -97,7 +103,7 @@ struct SeedDetailSheet: View {
                         .font(.subheadline.weight(.medium))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
+                        .background(.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                         .foregroundStyle(.red)
                 }
                 .confirmationDialog("Delete this seed?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
@@ -111,11 +117,11 @@ struct SeedDetailSheet: View {
                     isEditing = false
                 }
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SaplingColors.bark)
             }
         }
         .padding(20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
     }
 
@@ -124,15 +130,15 @@ struct SeedDetailSheet: View {
         HStack(spacing: 8) {
             Image(systemName: icon)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SaplingColors.bark.opacity(0.7))
                 .frame(width: 16)
             Text(label)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SaplingColors.bark)
             Spacer()
             Text(value)
                 .font(.caption.monospacedDigit())
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SaplingColors.ink.opacity(0.7))
         }
     }
 

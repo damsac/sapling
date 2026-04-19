@@ -88,25 +88,47 @@ private struct TripRow: View {
     let trip: FfiTripSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(trip.name)
-                .font(.headline.weight(.semibold))
+        HStack(spacing: 12) {
+            // Brand accent bar
+            RoundedRectangle(cornerRadius: 2)
+                .fill(SaplingColors.brand)
+                .frame(width: 3)
+                .frame(minHeight: 44)
 
-            Text(formattedDate)
-                .font(.subheadline)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(trip.name)
+                    .font(.headline.weight(.semibold))
+
+                Text(formattedDate)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 6) {
+                    Label(formatDistance(trip.distanceM), systemImage: "arrow.left.and.right")
+                    Text("·")
+                    Label(formatDuration(trip.durationMs), systemImage: "clock")
+                    Text("·")
+                    Label("+\(formatElevation(trip.elevationGain))", systemImage: "arrow.up")
+                }
+                .font(.caption2)
                 .foregroundStyle(.secondary)
+                .labelStyle(.titleOnly)
 
-            HStack(spacing: 8) {
-                Text(formatDistance(trip.distanceM))
-                Text("\u{00B7}")
-                Text(formatDuration(trip.durationMs))
-                Text("\u{00B7}")
-                Text("+\(formatElevation(trip.elevationGain))")
+                if trip.seedCount > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "leaf.fill")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.brand)
+                        Text("\(trip.seedCount) seed\(trip.seedCount == 1 ? "" : "s")")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.brand.opacity(0.8))
+                    }
+                }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+
+            Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     private var formattedDate: String {
