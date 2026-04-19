@@ -111,6 +111,7 @@ pub struct RecordingUpdate {
 pub struct TripSummary {
     pub id: String,
     pub name: String,
+    pub notes: Option<String>,
     pub distance_m: f64,
     pub elevation_gain: f64,
     pub elevation_loss: f64,

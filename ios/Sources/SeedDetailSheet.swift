@@ -45,9 +45,12 @@ struct SeedDetailSheet: View {
                     .foregroundStyle(seed.seedType.color)
                 } else {
                     Button(action: { isEditing = true; editTitle = seed.title; editNotes = seed.notes ?? "" }) {
-                        Image(systemName: "pencil")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        Label("Edit", systemImage: "pencil")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(seed.seedType.color)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(seed.seedType.color.opacity(0.12), in: Capsule())
                     }
 
                     Button(action: onDismiss) {

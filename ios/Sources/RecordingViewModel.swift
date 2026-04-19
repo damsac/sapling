@@ -21,7 +21,7 @@ class RecordingViewModel {
     private var recordingTask: Task<Void, Never>?
     private var timerTask: Task<Void, Never>?
     private var recordingStartedAt: Date?
-    private var currentTripId: String?
+    private(set) var currentTripId: String?
 
     /// Last known location from the provider, for centering the map.
     var currentLocation: CLLocation? {
@@ -143,6 +143,73 @@ class RecordingViewModel {
         isRecording = false
         recordingStartedAt = nil
         currentTripId = nil
+    }
+
+    /// Stop recording and delete the trip without saving.
+    func discardRecording() {
+        let tripId = currentTripId
+        recordingTask?.cancel()
+        recordingTask = nil
+        timerTask?.cancel()
+        timerTask = nil
+        locationProvider.stopUpdates()
+        isRecording = false
+        recordingStartedAt = nil
+        currentTripId = nil
+        trackCoordinates = []
+        distanceMeters = 0
+        elevationGain = 0
+        elapsedMs = 0
+        pointCount = 0
+        if let id = tripId {
+            try? core.deleteTrip(id: id)
+        }
+    }
+
+    func renameLastTrip(name: String) {
+        guard let id = lastTripSummary?.id else { return }
+        do {
+            try core.renameTrip(id: id, name: name)
+            if let existing = lastTripSummary {
+                lastTripSummary = FfiTripSummary(
+                    id: existing.id,
+                    name: name,
+                    notes: existing.notes,
+                    distanceM: existing.distanceM,
+                    elevationGain: existing.elevationGain,
+                    elevationLoss: existing.elevationLoss,
+                    durationMs: existing.durationMs,
+                    seedCount: existing.seedCount,
+                    segmentCount: existing.segmentCount,
+                    createdAt: existing.createdAt
+                )
+            }
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func updateLastTripNotes(notes: String?) {
+        guard let id = lastTripSummary?.id else { return }
+        do {
+            try core.updateTripNotes(id: id, notes: notes)
+            if let existing = lastTripSummary {
+                lastTripSummary = FfiTripSummary(
+                    id: existing.id,
+                    name: existing.name,
+                    notes: notes,
+                    distanceM: existing.distanceM,
+                    elevationGain: existing.elevationGain,
+                    elevationLoss: existing.elevationLoss,
+                    durationMs: existing.durationMs,
+                    seedCount: existing.seedCount,
+                    segmentCount: existing.segmentCount,
+                    createdAt: existing.createdAt
+                )
+            }
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     /// Dismiss the trip summary sheet.

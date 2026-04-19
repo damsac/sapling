@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var showOfflineSheet: Bool = false
     @State private var showTripList: Bool = false
     @State private var showSeedList: Bool = false
+    @State private var showStopSheet: Bool = false
     @State private var visibleBounds: MLNCoordinateBounds?
     @State private var initError: String? = nil
     @State private var snapToLocationTrigger: Bool = false
@@ -238,7 +239,7 @@ struct ContentView: View {
 
                         Button {
                             if viewModel.isRecording {
-                                viewModel.stopRecording()
+                                withAnimation { showStopSheet = true }
                             } else {
                                 handleRecordTap()
                             }
@@ -296,6 +297,12 @@ struct ContentView: View {
                     trackCoordinates: viewModel.lastTripTrack,
                     onDismiss: {
                         viewModel.dismissTripSummary()
+                    },
+                    onRename: { name in
+                        viewModel.renameLastTrip(name: name)
+                    },
+                    onUpdateNotes: { notes in
+                        viewModel.updateLastTripNotes(notes: notes)
                     }
                 )
             }
@@ -315,6 +322,24 @@ struct ContentView: View {
         .sheet(isPresented: $showSeedList) {
             SeedListView(viewModel: seedViewModel)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showStopSheet) {
+            StopRecordingSheet(
+                distanceMeters: viewModel.distanceMeters,
+                elevationGain: viewModel.elevationGain,
+                elapsedMs: viewModel.elapsedMs,
+                onResume: {
+                    showStopSheet = false
+                },
+                onSave: {
+                    showStopSheet = false
+                    viewModel.stopRecording()
+                },
+                onDiscard: {
+                    showStopSheet = false
+                    viewModel.discardRecording()
+                }
+            )
         }
         .alert("Error", isPresented: Binding(
             get: { viewModel.lastError != nil || seedViewModel.lastError != nil },

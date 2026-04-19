@@ -106,6 +106,7 @@ impl Store {
                     PRIMARY KEY (trip_id, seed_id)
                 );",
             ),
+            M::up("ALTER TABLE trips ADD COLUMN notes TEXT;"),
         ]);
 
         migrations
@@ -303,13 +304,13 @@ impl Store {
     /// List all finalized, non-deleted trips, most recent first.
     pub fn list_trips(&self) -> Result<Vec<TripSummary>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.id, t.name, t.distance_m, t.elevation_gain, t.elevation_loss, t.duration_ms, t.created_at,
+            "SELECT t.id, t.name, t.notes, t.distance_m, t.elevation_gain, t.elevation_loss, t.duration_ms, t.created_at,
                     COUNT(DISTINCT ts.seed_id) AS seed_count,
                     COUNT(DISTINCT tp.segment_index) AS segment_count
              FROM trips t
              LEFT JOIN trip_seeds ts ON t.id = ts.trip_id AND ts.deleted_at IS NULL
              LEFT JOIN track_points tp ON t.id = tp.trip_id AND tp.deleted_at IS NULL
-             WHERE t.deleted_at IS NULL AND t.duration_ms > 0
+             WHERE t.deleted_at IS NULL
              GROUP BY t.id
              ORDER BY t.created_at DESC",
         )?;
@@ -318,13 +319,14 @@ impl Store {
             Ok(TripSummary {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                distance_m: row.get(2)?,
-                elevation_gain: row.get(3)?,
-                elevation_loss: row.get(4)?,
-                duration_ms: row.get(5)?,
-                created_at: row.get(6)?,
-                seed_count: row.get::<_, u32>(7)?,
-                segment_count: row.get::<_, u32>(8)?,
+                notes: row.get(2)?,
+                distance_m: row.get(3)?,
+                elevation_gain: row.get(4)?,
+                elevation_loss: row.get(5)?,
+                duration_ms: row.get(6)?,
+                created_at: row.get(7)?,
+                seed_count: row.get::<_, u32>(8)?,
+                segment_count: row.get::<_, u32>(9)?,
             })
         })?;
 
@@ -338,7 +340,7 @@ impl Store {
     /// Fetch a single trip by ID, or None if not found (ignores soft-deleted).
     pub fn get_trip(&self, id: &str) -> Result<Option<TripSummary>, SaplingError> {
         let mut stmt = self.conn.prepare(
-            "SELECT t.id, t.name, t.distance_m, t.elevation_gain, t.elevation_loss, t.duration_ms, t.created_at,
+            "SELECT t.id, t.name, t.notes, t.distance_m, t.elevation_gain, t.elevation_loss, t.duration_ms, t.created_at,
                     COUNT(DISTINCT ts.seed_id) AS seed_count,
                     COUNT(DISTINCT tp.segment_index) AS segment_count
              FROM trips t
@@ -352,13 +354,14 @@ impl Store {
             Ok(TripSummary {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                distance_m: row.get(2)?,
-                elevation_gain: row.get(3)?,
-                elevation_loss: row.get(4)?,
-                duration_ms: row.get(5)?,
-                created_at: row.get(6)?,
-                seed_count: row.get::<_, u32>(7)?,
-                segment_count: row.get::<_, u32>(8)?,
+                notes: row.get(2)?,
+                distance_m: row.get(3)?,
+                elevation_gain: row.get(4)?,
+                elevation_loss: row.get(5)?,
+                duration_ms: row.get(6)?,
+                created_at: row.get(7)?,
+                seed_count: row.get::<_, u32>(8)?,
+                segment_count: row.get::<_, u32>(9)?,
             })
         })?;
 
@@ -368,7 +371,24 @@ impl Store {
         }
     }
 
-    /// Soft-delete a trip and its associated track points and seed links.
+    pub fn rename_trip(&self, id: &str, name: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE trips SET name = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
+            rusqlite::params![name, now, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn update_trip_notes(&self, id: &str, notes: Option<&str>) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE trips SET notes = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
+            rusqlite::params![notes, now, id],
+        )?;
+        Ok(())
+    }
+
     pub fn delete_trip(&self, id: &str) -> Result<(), SaplingError> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(

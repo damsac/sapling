@@ -196,6 +196,7 @@ impl From<RecordingUpdate> for FfiRecordingUpdate {
 pub struct FfiTripSummary {
     pub id: String,
     pub name: String,
+    pub notes: Option<String>,
     pub distance_m: f64,
     pub elevation_gain: f64,
     pub elevation_loss: f64,
@@ -210,6 +211,7 @@ impl From<TripSummary> for FfiTripSummary {
         FfiTripSummary {
             id: s.id,
             name: s.name,
+            notes: s.notes,
             distance_m: s.distance_m,
             elevation_gain: s.elevation_gain,
             elevation_loss: s.elevation_loss,
@@ -383,6 +385,16 @@ impl SaplingCore {
 
     pub fn get_trip(&self, id: String) -> Result<Option<FfiTripSummary>, FfiError> {
         Ok(self.store.lock().unwrap().get_trip(&id)?.map(|t| t.into()))
+    }
+
+    pub fn rename_trip(&self, id: String, name: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().rename_trip(&id, &name)?;
+        Ok(())
+    }
+
+    pub fn update_trip_notes(&self, id: String, notes: Option<String>) -> Result<(), FfiError> {
+        self.store.lock().unwrap().update_trip_notes(&id, notes.as_deref())?;
+        Ok(())
     }
 
     pub fn delete_trip(&self, id: String) -> Result<(), FfiError> {

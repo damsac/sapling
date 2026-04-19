@@ -530,6 +530,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func listTrips() throws  -> [FfiTripSummary]
     
+    func renameTrip(id: String, name: String) throws 
+    
     func searchSeeds(query: String) throws  -> [FfiSeed]
     
     func startRecording(name: String?) throws  -> String
@@ -537,6 +539,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     func stopRecording() throws  -> FfiTripSummary?
     
     func updateSeed(id: String, input: FfiUpdateSeedInput) throws  -> FfiSeed
+    
+    func updateTripNotes(id: String, notes: String?) throws 
     
 }
 /**
@@ -678,6 +682,14 @@ open func listTrips()throws  -> [FfiTripSummary]  {
 })
 }
     
+open func renameTrip(id: String, name: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_rename_trip(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),$0
+    )
+}
+}
+    
 open func searchSeeds(query: String)throws  -> [FfiSeed]  {
     return try  FfiConverterSequenceTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_search_seeds(self.uniffiClonePointer(),
@@ -708,6 +720,14 @@ open func updateSeed(id: String, input: FfiUpdateSeedInput)throws  -> FfiSeed  {
         FfiConverterTypeFfiUpdateSeedInput_lower(input),$0
     )
 })
+}
+    
+open func updateTripNotes(id: String, notes: String?)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_update_trip_notes(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterOptionString.lower(notes),$0
+    )
+}
 }
     
 
@@ -1252,6 +1272,7 @@ public func FfiConverterTypeFfiTrackPoint_lower(_ value: FfiTrackPoint) -> RustB
 public struct FfiTripSummary {
     public var id: String
     public var name: String
+    public var notes: String?
     public var distanceM: Double
     public var elevationGain: Double
     public var elevationLoss: Double
@@ -1262,9 +1283,10 @@ public struct FfiTripSummary {
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(id: String, name: String, distanceM: Double, elevationGain: Double, elevationLoss: Double, durationMs: Int64, seedCount: UInt32, segmentCount: UInt32, createdAt: String) {
+    public init(id: String, name: String, notes: String?, distanceM: Double, elevationGain: Double, elevationLoss: Double, durationMs: Int64, seedCount: UInt32, segmentCount: UInt32, createdAt: String) {
         self.id = id
         self.name = name
+        self.notes = notes
         self.distanceM = distanceM
         self.elevationGain = elevationGain
         self.elevationLoss = elevationLoss
@@ -1286,6 +1308,9 @@ extension FfiTripSummary: Equatable, Hashable {
             return false
         }
         if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.notes != rhs.notes {
             return false
         }
         if lhs.distanceM != rhs.distanceM {
@@ -1315,6 +1340,7 @@ extension FfiTripSummary: Equatable, Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
         hasher.combine(name)
+        hasher.combine(notes)
         hasher.combine(distanceM)
         hasher.combine(elevationGain)
         hasher.combine(elevationLoss)
@@ -1336,6 +1362,7 @@ public struct FfiConverterTypeFfiTripSummary: FfiConverterRustBuffer {
             try FfiTripSummary(
                 id: FfiConverterString.read(from: &buf), 
                 name: FfiConverterString.read(from: &buf), 
+                notes: FfiConverterOptionString.read(from: &buf), 
                 distanceM: FfiConverterDouble.read(from: &buf), 
                 elevationGain: FfiConverterDouble.read(from: &buf), 
                 elevationLoss: FfiConverterDouble.read(from: &buf), 
@@ -1349,6 +1376,7 @@ public struct FfiConverterTypeFfiTripSummary: FfiConverterRustBuffer {
     public static func write(_ value: FfiTripSummary, into buf: inout [UInt8]) {
         FfiConverterString.write(value.id, into: &buf)
         FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.notes, into: &buf)
         FfiConverterDouble.write(value.distanceM, into: &buf)
         FfiConverterDouble.write(value.elevationGain, into: &buf)
         FfiConverterDouble.write(value.elevationLoss, into: &buf)
@@ -2007,6 +2035,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_list_trips() != 29418) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_rename_trip() != 35173) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_search_seeds() != 34756) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2017,6 +2048,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_update_seed() != 12917) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_update_trip_notes() != 57267) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_constructor_saplingcore_new() != 24575) {

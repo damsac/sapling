@@ -8,10 +8,15 @@ struct TripSummarySheet: View {
     let summary: FfiTripSummary
     let trackCoordinates: [CLLocationCoordinate2D]
     let onDismiss: () -> Void
+    let onRename: (String) -> Void
+    let onUpdateNotes: (String?) -> Void
+
+    @State private var isEditing = false
+    @State private var editName = ""
+    @State private var editNotes = ""
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag handle
             Capsule()
                 .fill(.secondary.opacity(0.4))
                 .frame(width: 36, height: 5)
@@ -20,52 +25,130 @@ struct TripSummarySheet: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    // Mini map with trail
+                    // Mini map
                     if !trackCoordinates.isEmpty {
                         SummaryMapView(trackCoordinates: trackCoordinates)
-                            .frame(height: 250)
+                            .frame(height: 220)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                             .padding(.horizontal, 16)
                     }
 
-                    // Trip name and date
-                    VStack(spacing: 4) {
-                        Text(summary.name)
-                            .font(.title2)
-                            .fontWeight(.bold)
+                    // Trip name + edit controls
+                    VStack(spacing: 12) {
+                        if isEditing {
+                            VStack(spacing: 12) {
+                                // Name field
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Trip Name")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                    TextField("Trip name", text: $editName)
+                                        .font(.body.weight(.semibold))
+                                        .padding(10)
+                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                }
 
-                        Text(Date(), format: .dateTime.month(.wide).day().year())
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                                // Notes field
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Notes")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                    TextField("Add notes about this trip…", text: $editNotes, axis: .vertical)
+                                        .font(.body)
+                                        .lineLimit(3...8)
+                                        .padding(10)
+                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                }
+
+                                HStack(spacing: 12) {
+                                    Button("Cancel") {
+                                        isEditing = false
+                                    }
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+
+                                    Button("Save") {
+                                        let name = editName.trimmingCharacters(in: .whitespaces)
+                                        if !name.isEmpty { onRename(name) }
+                                        let notes = editNotes.trimmingCharacters(in: .whitespaces)
+                                        onUpdateNotes(notes.isEmpty ? nil : notes)
+                                        isEditing = false
+                                    }
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(SaplingColors.brand, in: RoundedRectangle(cornerRadius: 12))
+                                }
+                            }
+                        } else {
+                            // Display mode
+                            VStack(spacing: 6) {
+                                HStack(alignment: .center, spacing: 10) {
+                                    Text(summary.name)
+                                        .font(.title2.weight(.bold))
+                                        .multilineTextAlignment(.center)
+                                        .frame(maxWidth: .infinity)
+
+                                    Button {
+                                        editName = summary.name
+                                        editNotes = summary.notes ?? ""
+                                        isEditing = true
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(SaplingColors.brand)
+                                            .padding(.horizontal, 10)
+                                            .padding(.vertical, 6)
+                                            .background(SaplingColors.brand.opacity(0.12), in: Capsule())
+                                    }
+                                }
+
+                                Text(Date(), format: .dateTime.month(.wide).day().year())
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+
+                                if let notes = summary.notes, !notes.isEmpty {
+                                    Text(notes)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.top, 2)
+                                }
+                            }
+                        }
                     }
                     .padding(.horizontal, 16)
 
-                    // Stats grid
-                    StatsGrid(summary: summary)
-                        .padding(.horizontal, 16)
+                    if !isEditing {
+                        // Stats grid
+                        StatsGrid(summary: summary)
+                            .padding(.horizontal, 16)
 
-                    // Seed count (placeholder until trip-seed linkage)
-                    if summary.seedCount > 0 {
-                        HStack {
-                            Image(systemName: "leaf.fill")
-                                .foregroundStyle(SaplingColors.brand)
-                            Text("\(summary.seedCount) seed\(summary.seedCount == 1 ? "" : "s") dropped")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                        if summary.seedCount > 0 {
+                            HStack {
+                                Image(systemName: "leaf.fill")
+                                    .foregroundStyle(SaplingColors.brand)
+                                Text("\(summary.seedCount) seed\(summary.seedCount == 1 ? "" : "s") dropped")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                        }
+
+                        Button(action: onDismiss) {
+                            Text("Done")
+                                .font(.headline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                         }
                         .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
                     }
-
-                    // Done button
-                    Button(action: onDismiss) {
-                        Text("Done")
-                            .font(.headline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
                 }
             }
         }

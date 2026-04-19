@@ -143,6 +143,7 @@ impl Recorder {
         Some(TripSummary {
             id,
             name: self.trip_name.clone(),
+            notes: None,
             distance_m: self.distance_m,
             elevation_gain: self.elevation_gain,
             elevation_loss: self.elevation_loss,

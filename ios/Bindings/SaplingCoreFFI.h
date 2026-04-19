@@ -316,6 +316,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_list_seeds(void*_Nonnull ptr, Ru
 RustBuffer uniffi_sapling_fn_method_saplingcore_list_trips(void*_Nonnull ptr, RustCallStatus *_Nonnull out_status
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_RENAME_TRIP
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_RENAME_TRIP
+void uniffi_sapling_fn_method_saplingcore_rename_trip(void*_Nonnull ptr, RustBuffer id, RustBuffer name, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_SEARCH_SEEDS
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_SEARCH_SEEDS
 RustBuffer uniffi_sapling_fn_method_saplingcore_search_seeds(void*_Nonnull ptr, RustBuffer query, RustCallStatus *_Nonnull out_status
@@ -334,6 +339,11 @@ RustBuffer uniffi_sapling_fn_method_saplingcore_stop_recording(void*_Nonnull ptr
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_UPDATE_SEED
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_UPDATE_SEED
 RustBuffer uniffi_sapling_fn_method_saplingcore_update_seed(void*_Nonnull ptr, RustBuffer id, RustBuffer input, RustCallStatus *_Nonnull out_status
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_UPDATE_TRIP_NOTES
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_FN_METHOD_SAPLINGCORE_UPDATE_TRIP_NOTES
+void uniffi_sapling_fn_method_saplingcore_update_trip_notes(void*_Nonnull ptr, RustBuffer id, RustBuffer notes, RustCallStatus *_Nonnull out_status
 );
 #endif
 #ifndef UNIFFI_FFIDEF_FFI_SAPLING_RUSTBUFFER_ALLOC
@@ -676,6 +686,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_list_trips(void
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_RENAME_TRIP
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_RENAME_TRIP
+uint16_t uniffi_sapling_checksum_method_saplingcore_rename_trip(void
+    
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_SEARCH_SEEDS
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_SEARCH_SEEDS
 uint16_t uniffi_sapling_checksum_method_saplingcore_search_seeds(void
@@ -697,6 +713,12 @@ uint16_t uniffi_sapling_checksum_method_saplingcore_stop_recording(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_UPDATE_SEED
 #define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_UPDATE_SEED
 uint16_t uniffi_sapling_checksum_method_saplingcore_update_seed(void
+    
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_UPDATE_TRIP_NOTES
+#define UNIFFI_FFIDEF_UNIFFI_SAPLING_CHECKSUM_METHOD_SAPLINGCORE_UPDATE_TRIP_NOTES
+uint16_t uniffi_sapling_checksum_method_saplingcore_update_trip_notes(void
     
 );
 #endif
