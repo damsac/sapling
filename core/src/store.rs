@@ -107,6 +107,58 @@ impl Store {
                 );",
             ),
             M::up("ALTER TABLE trips ADD COLUMN notes TEXT;"),
+            // Safety migration: repairs DBs where user_version was set by an older binary
+            // whose migration 1 created trips (not seeds), causing seeds to be skipped.
+            M::up(
+                "CREATE TABLE IF NOT EXISTS seeds (
+                    id          TEXT PRIMARY KEY NOT NULL,
+                    seed_type   TEXT NOT NULL,
+                    title       TEXT NOT NULL,
+                    notes       TEXT,
+                    latitude    REAL NOT NULL,
+                    longitude   REAL NOT NULL,
+                    elevation   REAL,
+                    confidence  INTEGER NOT NULL DEFAULT 50,
+                    tags        TEXT NOT NULL DEFAULT '[]',
+                    device_id   TEXT,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL,
+                    deleted_at  TEXT
+                );
+
+                CREATE VIRTUAL TABLE IF NOT EXISTS seeds_fts USING fts5(
+                    title, notes, tags, content='seeds', content_rowid='rowid'
+                );
+
+                CREATE TRIGGER IF NOT EXISTS seeds_ai AFTER INSERT ON seeds BEGIN
+                    INSERT INTO seeds_fts(rowid, title, notes, tags)
+                    VALUES (new.rowid, new.title, new.notes, new.tags);
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS seeds_ad AFTER DELETE ON seeds BEGIN
+                    INSERT INTO seeds_fts(seeds_fts, rowid, title, notes, tags)
+                    VALUES ('delete', old.rowid, old.title, old.notes, old.tags);
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS seeds_au AFTER UPDATE ON seeds BEGIN
+                    INSERT INTO seeds_fts(seeds_fts, rowid, title, notes, tags)
+                    VALUES ('delete', old.rowid, old.title, old.notes, old.tags);
+                    INSERT INTO seeds_fts(rowid, title, notes, tags)
+                    VALUES (new.rowid, new.title, new.notes, new.tags);
+                END;",
+            ),
+            // Safety migration: repairs DBs where trip_seeds was named trip_gems by an older binary.
+            M::up(
+                "CREATE TABLE IF NOT EXISTS trip_seeds (
+                    trip_id     TEXT NOT NULL REFERENCES trips(id),
+                    seed_id     TEXT NOT NULL REFERENCES seeds(id),
+                    device_id   TEXT,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL,
+                    deleted_at  TEXT,
+                    PRIMARY KEY (trip_id, seed_id)
+                );",
+            ),
         ]);
 
         migrations

@@ -402,7 +402,18 @@ impl SaplingCore {
         Ok(())
     }
 
-    // -- GPX Import --
+    // -- GPX Import / Export --
+
+    pub fn export_trip_gpx(&self, trip_id: String) -> Result<String, FfiError> {
+        let store = self.store.lock().unwrap();
+        let trip = store
+            .get_trip(&trip_id)?
+            .ok_or_else(|| FfiError::NotFound { msg: format!("trip {trip_id} not found") })?;
+        let points = store.get_track_points(&trip_id)?;
+        let seeds = store.list_seeds()?;
+        drop(store);
+        Ok(sapling_core::gpx::export_trip_gpx(&trip, &points, &seeds))
+    }
 
     pub fn import_gpx(&self, file_path: String) -> Result<Vec<FfiTrackPoint>, FfiError> {
         let (points, _waypoints) = sapling_core::gpx::import_gpx(&file_path)?;

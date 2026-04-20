@@ -10,10 +10,13 @@ struct TripSummarySheet: View {
     let onDismiss: () -> Void
     let onRename: (String) -> Void
     let onUpdateNotes: (String?) -> Void
+    let onExportGpx: () -> URL?
 
     @State private var isEditing = false
     @State private var editName = ""
     @State private var editNotes = ""
+    @State private var gpxURL: URL? = nil
+    @State private var showShareSheet = false
 
     private var parsedDate: Date {
         let formatter = ISO8601DateFormatter()
@@ -113,6 +116,17 @@ struct TripSummarySheet: View {
                                             .padding(.vertical, 6)
                                             .background(SaplingColors.brand.opacity(0.12), in: Capsule())
                                     }
+
+                                    Button {
+                                        gpxURL = onExportGpx()
+                                        if gpxURL != nil { showShareSheet = true }
+                                    } label: {
+                                        Image(systemName: "square.and.arrow.up")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(SaplingColors.brand)
+                                            .padding(8)
+                                            .background(SaplingColors.brand.opacity(0.12), in: Circle())
+                                    }
                                 }
 
                                 Text(parsedDate, format: .dateTime.month(.wide).day().year())
@@ -164,7 +178,22 @@ struct TripSummarySheet: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled(false)
+        .sheet(isPresented: $showShareSheet) {
+            if let url = gpxURL {
+                ShareSheet(url: url)
+            }
+        }
     }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Stats Grid

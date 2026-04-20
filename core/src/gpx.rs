@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use crate::error::SaplingError;
-use crate::models::TrackPoint;
+use crate::models::{Seed, TrackPoint, TripSummary};
 
 /// Extract track points and waypoints from parsed GPX data.
 fn parse_gpx_data(gpx_data: &gpx::Gpx) -> (Vec<TrackPoint>, Vec<gpx::Waypoint>) {
@@ -65,6 +65,61 @@ pub fn import_gpx_from_str(
         .map_err(|e| SaplingError::GpxParse(format!("failed to parse GPX: {e}")))?;
 
     Ok(parse_gpx_data(&gpx_data))
+}
+
+/// Export a trip as a GPX XML string, embedding track points and seeds as waypoints.
+pub fn export_trip_gpx(trip: &TripSummary, points: &[TrackPoint], seeds: &[Seed]) -> String {
+    let mut xml = String::new();
+    xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    xml.push_str("<gpx version=\"1.1\" creator=\"Sapling\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
+    xml.push_str(&format!("  <metadata><name>{}</name></metadata>\n", escape_xml(&trip.name)));
+
+    for seed in seeds {
+        xml.push_str(&format!(
+            "  <wpt lat=\"{}\" lon=\"{}\">\n",
+            seed.latitude, seed.longitude
+        ));
+        if let Some(ele) = seed.elevation {
+            xml.push_str(&format!("    <ele>{ele}</ele>\n"));
+        }
+        xml.push_str(&format!("    <name>{}</name>\n", escape_xml(&seed.title)));
+        if let Some(notes) = &seed.notes {
+            xml.push_str(&format!("    <desc>{}</desc>\n", escape_xml(notes)));
+        }
+        xml.push_str(&format!("    <type>{}</type>\n", seed.seed_type.as_str()));
+        xml.push_str("  </wpt>\n");
+    }
+
+    xml.push_str(&format!("  <trk><name>{}</name><trkseg>\n", escape_xml(&trip.name)));
+    for pt in points {
+        xml.push_str(&format!(
+            "    <trkpt lat=\"{}\" lon=\"{}\">\n",
+            pt.latitude, pt.longitude
+        ));
+        if let Some(ele) = pt.elevation {
+            xml.push_str(&format!("      <ele>{ele}</ele>\n"));
+        }
+        if pt.timestamp_ms > 0 {
+            let secs = pt.timestamp_ms / 1000;
+            let dt = time::OffsetDateTime::from_unix_timestamp(secs).unwrap_or(time::OffsetDateTime::UNIX_EPOCH);
+            let fmt = time::format_description::well_known::Rfc3339;
+            if let Ok(s) = dt.format(&fmt) {
+                xml.push_str(&format!("      <time>{s}</time>\n"));
+            }
+        }
+        xml.push_str("    </trkpt>\n");
+    }
+    xml.push_str("  </trkseg></trk>\n");
+    xml.push_str("</gpx>\n");
+    xml
+}
+
+fn escape_xml(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&apos;")
 }
 
 #[cfg(test)]

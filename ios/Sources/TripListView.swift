@@ -3,6 +3,8 @@ import SwiftUI
 struct TripListView: View {
     var viewModel: TripListViewModel
     @State private var tripToDelete: FfiTripSummary? = nil
+    @State private var gpxURL: URL? = nil
+    @State private var showShareSheet = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -32,6 +34,15 @@ struct TripListView: View {
                 NavigationLink(value: trip.id) {
                     TripRow(trip: trip)
                 }
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button {
+                        gpxURL = viewModel.exportGpx(trip: trip)
+                        if gpxURL != nil { showShareSheet = true }
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .tint(.blue)
+                }
             }
             .onDelete { indexSet in
                 guard let index = indexSet.first else { return }
@@ -58,6 +69,11 @@ struct TripListView: View {
         } message: {
             if let trip = tripToDelete {
                 Text("Are you sure you want to delete \"\(trip.name)\"?")
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = gpxURL {
+                ShareSheet(url: url)
             }
         }
     }

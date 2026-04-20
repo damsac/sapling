@@ -278,6 +278,9 @@ struct ContentView: View {
                     },
                     onUpdateNotes: { notes in
                         viewModel.updateLastTripNotes(notes: notes)
+                    },
+                    onExportGpx: {
+                        tripListViewModel.exportGpx(trip: summary)
                     }
                 )
             }

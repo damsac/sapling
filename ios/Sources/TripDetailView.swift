@@ -9,6 +9,9 @@ struct TripDetailView: View {
     let viewModel: TripListViewModel
 
     @State private var trackCoordinates: [CLLocationCoordinate2D] = []
+    @State private var trackPoints: [FfiTrackPoint] = []
+    @State private var gpxURL: URL? = nil
+    @State private var showShareSheet = false
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -27,6 +30,21 @@ struct TripDetailView: View {
         }
         .navigationTitle(trip.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    gpxURL = viewModel.exportGpx(trip: trip)
+                    if gpxURL != nil { showShareSheet = true }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = gpxURL {
+                ShareSheet(url: url)
+            }
+        }
         .onAppear { loadTrack() }
     }
 
@@ -83,6 +101,12 @@ struct TripDetailView: View {
             }
             .padding(.bottom, 14)
 
+            if !trackPoints.isEmpty {
+                ElevationProfileView(trackPoints: trackPoints)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+            }
+
             if trip.seedCount > 0 {
                 HStack(spacing: 4) {
                     Image(systemName: "leaf.fill")
@@ -104,6 +128,7 @@ struct TripDetailView: View {
 
     private func loadTrack() {
         let points = viewModel.getTrackPoints(tripId: trip.id)
+        trackPoints = points
         trackCoordinates = points.map {
             CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         }

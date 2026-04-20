@@ -518,6 +518,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func deleteTrip(id: String) throws 
     
+    func exportTripGpx(tripId: String) throws  -> String
+    
     func getSeed(id: String) throws  -> FfiSeed?
     
     func getTrackPoints(tripId: String) throws  -> [FfiTrackPoint]
@@ -634,6 +636,14 @@ open func deleteTrip(id: String)throws   {try rustCallWithError(FfiConverterType
         FfiConverterString.lower(id),$0
     )
 }
+}
+    
+open func exportTripGpx(tripId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_export_trip_gpx(self.uniffiClonePointer(),
+        FfiConverterString.lower(tripId),$0
+    )
+})
 }
     
 open func getSeed(id: String)throws  -> FfiSeed?  {
@@ -2015,6 +2025,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_delete_trip() != 51618) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_export_trip_gpx() != 4610) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_get_seed() != 50459) {
