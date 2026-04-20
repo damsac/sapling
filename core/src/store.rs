@@ -441,6 +441,79 @@ impl Store {
         Ok(())
     }
 
+    /// Create a trip from imported GPX track points, computing stats from the point data.
+    pub fn import_trip_from_gpx(
+        &self,
+        name: &str,
+        points: &[TrackPoint],
+    ) -> Result<TripSummary, SaplingError> {
+        let id = uuid::Uuid::now_v7().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // Compute stats from points
+        let mut distance_m = 0.0f64;
+        let mut elevation_gain = 0.0f64;
+        let mut elevation_loss = 0.0f64;
+        let mut prev: Option<&TrackPoint> = None;
+        for pt in points {
+            if let Some(p) = prev {
+                let d = crate::geo::haversine_distance(p.latitude, p.longitude, pt.latitude, pt.longitude);
+                distance_m += d;
+                if let (Some(e1), Some(e2)) = (p.elevation, pt.elevation) {
+                    let delta = e2 - e1;
+                    if delta > 0.0 { elevation_gain += delta; } else { elevation_loss += -delta; }
+                }
+            }
+            prev = Some(pt);
+        }
+        let duration_ms = if points.len() >= 2 {
+            points.last().map(|l| l.timestamp_ms).unwrap_or(0)
+                - points.first().map(|f| f.timestamp_ms).unwrap_or(0)
+        } else { 0 };
+
+        // Determine created_at from first point timestamp or now
+        let created_at = if let Some(first) = points.first() {
+            if first.timestamp_ms > 0 {
+                let secs = first.timestamp_ms / 1000;
+                time::OffsetDateTime::from_unix_timestamp(secs)
+                    .ok()
+                    .and_then(|dt| dt.format(&time::format_description::well_known::Rfc3339).ok())
+                    .unwrap_or_else(|| now.clone())
+            } else { now.clone() }
+        } else { now.clone() };
+
+        self.conn.execute(
+            "INSERT INTO trips (id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at, now],
+        )?;
+
+        for pt in points {
+            self.conn.execute(
+                "INSERT INTO track_points (trip_id, latitude, longitude, elevation, h_accuracy, v_accuracy, speed, course, timestamp_ms, baro_relative_altitude, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                rusqlite::params![
+                    id, pt.latitude, pt.longitude, pt.elevation,
+                    pt.h_accuracy, pt.v_accuracy, pt.speed, pt.course,
+                    pt.timestamp_ms, pt.baro_relative_altitude, now, now,
+                ],
+            )?;
+        }
+
+        Ok(TripSummary {
+            id,
+            name: name.to_string(),
+            notes: None,
+            distance_m,
+            elevation_gain,
+            elevation_loss,
+            duration_ms,
+            seed_count: 0,
+            segment_count: 1,
+            created_at,
+        })
+    }
+
     pub fn delete_trip(&self, id: &str) -> Result<(), SaplingError> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(
@@ -459,6 +532,39 @@ impl Store {
     }
 
     /// Soft-delete a seed by setting deleted_at.
+    /// Return all seeds associated with a specific trip via the trip_seeds join table.
+    pub fn get_seeds_for_trip(&self, trip_id: &str) -> Result<Vec<Seed>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT s.id, s.seed_type, s.title, s.notes, s.latitude, s.longitude, s.elevation, s.confidence, s.tags, s.created_at, s.updated_at
+             FROM seeds s
+             JOIN trip_seeds ts ON s.id = ts.seed_id
+             WHERE ts.trip_id = ?1 AND ts.deleted_at IS NULL AND s.deleted_at IS NULL
+             ORDER BY s.created_at ASC",
+        )?;
+
+        let rows = stmt.query_map(rusqlite::params![trip_id], |row| {
+            Ok(SeedRow {
+                id: row.get(0)?,
+                seed_type: row.get(1)?,
+                title: row.get(2)?,
+                notes: row.get(3)?,
+                latitude: row.get(4)?,
+                longitude: row.get(5)?,
+                elevation: row.get(6)?,
+                confidence: row.get(7)?,
+                tags: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            })
+        })?;
+
+        let mut seeds = Vec::new();
+        for row in rows {
+            seeds.push(seed_from_row(row?)?);
+        }
+        Ok(seeds)
+    }
+
     pub fn delete_seed(&self, id: &str) -> Result<(), SaplingError> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(

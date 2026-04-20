@@ -332,6 +332,17 @@ impl SaplingCore {
             .collect())
     }
 
+    pub fn get_seeds_for_trip(&self, trip_id: String) -> Result<Vec<FfiSeed>, FfiError> {
+        Ok(self
+            .store
+            .lock()
+            .unwrap()
+            .get_seeds_for_trip(&trip_id)?
+            .into_iter()
+            .map(|g| g.into())
+            .collect())
+    }
+
     pub fn delete_seed(&self, id: String) -> Result<(), FfiError> {
         self.store.lock().unwrap().delete_seed(&id)?;
         Ok(())
@@ -431,5 +442,15 @@ impl SaplingCore {
                 baro_relative_altitude: p.baro_relative_altitude,
             })
             .collect())
+    }
+
+    pub fn import_trip_from_gpx(&self, file_path: String, name: Option<String>) -> Result<FfiTripSummary, FfiError> {
+        let (points, _waypoints) = sapling_core::gpx::import_gpx(&file_path)?;
+        if points.is_empty() {
+            return Err(FfiError::InvalidInput { msg: "GPX file contains no track points".into() });
+        }
+        let trip_name = name.unwrap_or_else(|| "Imported Trip".into());
+        let trip = self.store.lock().unwrap().import_trip_from_gpx(&trip_name, &points)?;
+        Ok(trip.into())
     }
 }

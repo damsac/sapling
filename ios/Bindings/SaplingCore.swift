@@ -522,11 +522,15 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func getSeed(id: String) throws  -> FfiSeed?
     
+    func getSeedsForTrip(tripId: String) throws  -> [FfiSeed]
+    
     func getTrackPoints(tripId: String) throws  -> [FfiTrackPoint]
     
     func getTrip(id: String) throws  -> FfiTripSummary?
     
     func importGpx(filePath: String) throws  -> [FfiTrackPoint]
+    
+    func importTripFromGpx(filePath: String, name: String?) throws  -> FfiTripSummary
     
     func listSeeds() throws  -> [FfiSeed]
     
@@ -654,6 +658,14 @@ open func getSeed(id: String)throws  -> FfiSeed?  {
 })
 }
     
+open func getSeedsForTrip(tripId: String)throws  -> [FfiSeed]  {
+    return try  FfiConverterSequenceTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_get_seeds_for_trip(self.uniffiClonePointer(),
+        FfiConverterString.lower(tripId),$0
+    )
+})
+}
+    
 open func getTrackPoints(tripId: String)throws  -> [FfiTrackPoint]  {
     return try  FfiConverterSequenceTypeFfiTrackPoint.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_get_track_points(self.uniffiClonePointer(),
@@ -674,6 +686,15 @@ open func importGpx(filePath: String)throws  -> [FfiTrackPoint]  {
     return try  FfiConverterSequenceTypeFfiTrackPoint.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_import_gpx(self.uniffiClonePointer(),
         FfiConverterString.lower(filePath),$0
+    )
+})
+}
+    
+open func importTripFromGpx(filePath: String, name: String?)throws  -> FfiTripSummary  {
+    return try  FfiConverterTypeFfiTripSummary_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_import_trip_from_gpx(self.uniffiClonePointer(),
+        FfiConverterString.lower(filePath),
+        FfiConverterOptionString.lower(name),$0
     )
 })
 }
@@ -2033,6 +2054,9 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_get_seed() != 50459) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_get_seeds_for_trip() != 22085) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_get_track_points() != 27836) {
         return InitializationResult.apiChecksumMismatch
     }
@@ -2040,6 +2064,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_import_gpx() != 16505) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_import_trip_from_gpx() != 11205) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_list_seeds() != 22673) {

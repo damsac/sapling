@@ -1,10 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TripListView: View {
     var viewModel: TripListViewModel
     @State private var tripToDelete: FfiTripSummary? = nil
     @State private var gpxURL: URL? = nil
     @State private var showShareSheet = false
+    @State private var showImportPicker = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -19,8 +21,25 @@ struct TripListView: View {
             .navigationTitle("Trips")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showImportPicker = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .fileImporter(
+                isPresented: $showImportPicker,
+                allowedContentTypes: [UTType(filenameExtension: "gpx") ?? .xml],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    let name = url.deletingPathExtension().lastPathComponent
+                    viewModel.importGpx(fileURL: url, name: name.isEmpty ? nil : name)
                 }
             }
         }
