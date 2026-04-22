@@ -35,6 +35,24 @@ Key rules at a glance:
     install
   ```
 
+## Product Roadmap
+
+**Always read `/sapling/ROADMAP.md` before starting any new feature work.**
+
+Key rules:
+- Features should fit into one of the four phases — if something doesn't map to a phase, flag it before building
+- The fuzzy-location seed sharing mechanic is a core differentiator — never build a feature that publishes exact GPS coordinates of community seeds
+- When in doubt about what to build next, use the three-question priority filter at the bottom of ROADMAP.md
+- Update the `✅ / 🔨` status markers in ROADMAP.md when a phase or feature ships
+
+## Session Skills
+
+Three slash commands are available in this project — use them to keep sessions coordinated across collaborators:
+
+- `/start` — Run at the beginning of every session. Pulls latest, summarizes what was last worked on, flags conflicts, and gives a recommended next step grounded in the roadmap.
+- `/stop` — Run before ending a session. Commits staged work, runs build checks, pushes, updates the open PR, and updates ROADMAP.md status markers if anything shipped.
+- `/sense-check` — Run any time the session feels unfocused or a feature request seems off-track. Takes a holistic look at what's being built vs. what the roadmap actually needs.
+
 ## Code Style
 
 - No comments unless the WHY is non-obvious
