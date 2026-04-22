@@ -8,6 +8,20 @@ The gap we fill: **social-first backcountry tools that respect wild places.** Al
 
 ---
 
+## Navigation Structure
+
+Three tabs — Map and Explore ship in Phase 2, Community reserved for Phase 3.
+
+| Tab | Ships | Purpose |
+|---|---|---|
+| **Map** | Now | Live recording, seed dropping, route building |
+| **Explore** | Phase 2 | Trip history, saved routes, trail search |
+| **Community** | Phase 3 | Fuzzy seeds, trusted sharing, conditions |
+
+The Community tab ships as a locked placeholder in Phase 2 so the nav structure doesn't need to change later. Full mockups and flow diagrams: [`docs/mockups.md`](docs/mockups.md).
+
+---
+
 ## Phases
 
 ### ✅ Phase 1 — Foundation (complete)
@@ -20,7 +34,7 @@ The gap we fill: **social-first backcountry tools that respect wild places.** Al
 
 ---
 
-### 🔨 Phase 2 — Planning
+### 🔨 Phase 2 — Planning (in progress)
 
 Turn Sapling from a recording tool into a planning tool. Without this, users still need AllTrails or Gaia before they open Sapling.
 
@@ -30,7 +44,7 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - Data source: OpenStreetMap/Overpass API or licensed trail database
 - Show trail on map with stats before committing
 
-**Route Builder**
+**Route Builder** ✅
 - Draw a custom route on the map (tap to add points)
 - Or import a GPX/KML file
 - Show full elevation profile (chart with gain/loss markers)

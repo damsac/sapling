@@ -19,6 +19,14 @@ Key rules at a glance:
 - SQLite migrations live in `core/src/store.rs` — always add new columns via `M::up("ALTER TABLE ...")` at the end of the migrations array, never modify existing migrations
 - All store methods return `Result<_, SaplingError>`; FFI layer converts via `From<SaplingError> for FfiError`
 
+## iOS Navigation Architecture
+
+- `RootView` is the app root — owns the `TabView`, all `@Observable` ViewModels, `displayRoute`, and `selectedTab`
+- `ContentView` is the Map tab only — receives ViewModels as plain `var` (no `@State`/`@ObservedObject` wrapper; `@Observable` tracks property reads automatically)
+- `displayRoute: Binding<[CLLocationCoordinate2D]?>` is lifted to `RootView` so the Explore tab can trigger navigation on the Map tab
+- Cross-tab navigation: set `displayRoute` + `selectedTab = .map` from any tab's callback
+- New source files must be manually added to `ios/Sapling.xcodeproj/project.pbxproj` — the xcodeproj is gitignored but edits persist on disk
+
 ## iOS Build
 
 - Team ID: `98GXNZ6NKZ`

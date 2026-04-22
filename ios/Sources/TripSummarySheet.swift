@@ -279,15 +279,16 @@ private struct SummaryMapView: View {
 // MARK: - Formatting Helpers
 
 func formatDistance(_ meters: Double) -> String {
-    if meters < 1000 {
-        return String(format: "%.0f m", meters)
+    let miles = meters / 1609.344
+    if miles < 0.1 {
+        return String(format: "%.0f ft", meters * 3.28084)
     } else {
-        return String(format: "%.1f km", meters / 1000)
+        return String(format: "%.2f mi", miles)
     }
 }
 
 func formatElevation(_ meters: Double) -> String {
-    String(format: "%.0f m", meters)
+    String(format: "%.0f ft", meters * 3.28084)
 }
 
 func formatDuration(_ ms: Int64) -> String {
@@ -303,9 +304,9 @@ func formatDuration(_ ms: Int64) -> String {
 }
 
 func formatPace(_ distanceM: Double, _ durationMs: Int64) -> String {
-    let km = distanceM / 1000
-    guard km > 0 else { return "--" }
+    let miles = distanceM / 1609.344
+    guard miles > 0 else { return "--" }
     let hours = Double(durationMs) / 1000 / 3600
-    let kmh = km / hours
-    return String(format: "%.1f km/h", kmh)
+    let mph = miles / hours
+    return String(format: "%.1f mph", mph)
 }

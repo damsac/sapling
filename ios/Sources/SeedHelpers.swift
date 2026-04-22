@@ -58,3 +58,8 @@ extension FfiSeedType {
 
 /// All seed types in display order.
 let allSeedTypes: [FfiSeedType] = [.water, .camp, .beauty, .service, .custom]
+
+// MARK: - Identifiable Conformances
+
+extension FfiRoute: Identifiable {}
+extension FfiTripSummary: Identifiable {}

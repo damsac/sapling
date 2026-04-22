@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use rusqlite_migration::{Migrations, M};
 
 use crate::error::SaplingError;
-use crate::models::{CreateSeedInput, Seed, SeedType, TrackPoint, TripSummary};
+use crate::models::{CreateSeedInput, Route, RouteWaypoint, Seed, SeedType, TrackPoint, TripSummary};
 
 /// SQLite-backed persistent store.
 pub struct Store {
@@ -157,6 +157,18 @@ impl Store {
                     updated_at  TEXT NOT NULL,
                     deleted_at  TEXT,
                     PRIMARY KEY (trip_id, seed_id)
+                );",
+            ),
+            M::up(
+                "CREATE TABLE IF NOT EXISTS routes (
+                    id          TEXT PRIMARY KEY NOT NULL,
+                    name        TEXT NOT NULL,
+                    notes       TEXT,
+                    waypoints   TEXT NOT NULL DEFAULT '[]',
+                    distance_m  REAL NOT NULL DEFAULT 0,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL,
+                    deleted_at  TEXT
                 );",
             ),
         ]);
@@ -527,6 +539,88 @@ impl Store {
         self.conn.execute(
             "UPDATE trip_seeds SET deleted_at = ?1 WHERE trip_id = ?2 AND deleted_at IS NULL",
             rusqlite::params![now, id],
+        )?;
+        Ok(())
+    }
+
+    // -- Routes --
+
+    pub fn create_route(&self, name: &str, waypoints: &[RouteWaypoint], distance_m: f64) -> Result<Route, SaplingError> {
+        let id = uuid::Uuid::now_v7().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        let waypoints_json = serde_json::to_string(waypoints)
+            .map_err(|e| SaplingError::InvalidInput(e.to_string()))?;
+        self.conn.execute(
+            "INSERT INTO routes (id, name, waypoints, distance_m, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![id, name, waypoints_json, distance_m, now, now],
+        )?;
+        Ok(Route { id, name: name.to_string(), notes: None, waypoints: waypoints.to_vec(), distance_m, created_at: now.clone(), updated_at: now })
+    }
+
+    pub fn list_routes(&self) -> Result<Vec<Route>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, notes, waypoints, distance_m, created_at, updated_at FROM routes WHERE deleted_at IS NULL ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, f64>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+            ))
+        })?;
+        let mut routes = Vec::new();
+        for row in rows {
+            let (id, name, notes, waypoints_json, distance_m, created_at, updated_at) = row?;
+            let waypoints: Vec<RouteWaypoint> = serde_json::from_str(&waypoints_json)
+                .map_err(|e| SaplingError::Database(format!("bad waypoints json: {e}")))?;
+            routes.push(Route { id, name, notes, waypoints, distance_m, created_at, updated_at });
+        }
+        Ok(routes)
+    }
+
+    pub fn get_route(&self, id: &str) -> Result<Option<Route>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, notes, waypoints, distance_m, created_at, updated_at FROM routes WHERE id = ?1 AND deleted_at IS NULL",
+        )?;
+        let mut rows = stmt.query_map(rusqlite::params![id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, f64>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+            ))
+        })?;
+        if let Some(row) = rows.next() {
+            let (id, name, notes, waypoints_json, distance_m, created_at, updated_at) = row?;
+            let waypoints: Vec<RouteWaypoint> = serde_json::from_str(&waypoints_json)
+                .map_err(|e| SaplingError::Database(format!("bad waypoints json: {e}")))?;
+            Ok(Some(Route { id, name, notes, waypoints, distance_m, created_at, updated_at }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn delete_route(&self, id: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE routes SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn rename_route(&self, id: &str, name: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE routes SET name = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
+            rusqlite::params![name, now, id],
         )?;
         Ok(())
     }

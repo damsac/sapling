@@ -4,7 +4,8 @@ use std::sync::Mutex;
 
 use sapling_core::error::SaplingError;
 use sapling_core::models::{
-    ActivityState, CreateSeedInput, RecordingUpdate, Seed, SeedType, TrackPoint, TripSummary,
+    ActivityState, CreateSeedInput, RecordingUpdate, Route, RouteWaypoint, Seed, SeedType,
+    TrackPoint, TripSummary,
 };
 use sapling_core::recording::Recorder;
 use sapling_core::store::Store;
@@ -219,6 +220,49 @@ impl From<TripSummary> for FfiTripSummary {
             seed_count: s.seed_count,
             segment_count: s.segment_count,
             created_at: s.created_at,
+        }
+    }
+}
+
+#[derive(uniffi::Record)]
+pub struct FfiRouteWaypoint {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
+impl From<RouteWaypoint> for FfiRouteWaypoint {
+    fn from(w: RouteWaypoint) -> Self {
+        FfiRouteWaypoint { latitude: w.latitude, longitude: w.longitude }
+    }
+}
+
+impl From<FfiRouteWaypoint> for RouteWaypoint {
+    fn from(w: FfiRouteWaypoint) -> Self {
+        RouteWaypoint { latitude: w.latitude, longitude: w.longitude }
+    }
+}
+
+#[derive(uniffi::Record)]
+pub struct FfiRoute {
+    pub id: String,
+    pub name: String,
+    pub notes: Option<String>,
+    pub waypoints: Vec<FfiRouteWaypoint>,
+    pub distance_m: f64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<Route> for FfiRoute {
+    fn from(r: Route) -> Self {
+        FfiRoute {
+            id: r.id,
+            name: r.name,
+            notes: r.notes,
+            waypoints: r.waypoints.into_iter().map(|w| w.into()).collect(),
+            distance_m: r.distance_m,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
         }
     }
 }
@@ -442,6 +486,44 @@ impl SaplingCore {
                 baro_relative_altitude: p.baro_relative_altitude,
             })
             .collect())
+    }
+
+    // -- Routes --
+
+    pub fn create_route(
+        &self,
+        name: String,
+        waypoints: Vec<FfiRouteWaypoint>,
+        distance_m: f64,
+    ) -> Result<FfiRoute, FfiError> {
+        let core_waypoints: Vec<RouteWaypoint> = waypoints.into_iter().map(|w| w.into()).collect();
+        let route = self.store.lock().unwrap().create_route(&name, &core_waypoints, distance_m)?;
+        Ok(route.into())
+    }
+
+    pub fn list_routes(&self) -> Result<Vec<FfiRoute>, FfiError> {
+        Ok(self
+            .store
+            .lock()
+            .unwrap()
+            .list_routes()?
+            .into_iter()
+            .map(|r| r.into())
+            .collect())
+    }
+
+    pub fn get_route(&self, id: String) -> Result<Option<FfiRoute>, FfiError> {
+        Ok(self.store.lock().unwrap().get_route(&id)?.map(|r| r.into()))
+    }
+
+    pub fn delete_route(&self, id: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().delete_route(&id)?;
+        Ok(())
+    }
+
+    pub fn rename_route(&self, id: String, name: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().rename_route(&id, &name)?;
+        Ok(())
     }
 
     pub fn import_trip_from_gpx(&self, file_path: String, name: Option<String>) -> Result<FfiTripSummary, FfiError> {

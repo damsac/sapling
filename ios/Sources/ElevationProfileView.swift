@@ -7,7 +7,7 @@ struct ElevationProfileView: View {
 
     private struct Sample: Identifiable {
         let id: Int
-        let distanceKm: Double
+        let distanceMi: Double
         let elevationM: Double
     }
 
@@ -23,7 +23,7 @@ struct ElevationProfileView: View {
                     lat2: pt.latitude, lon2: pt.longitude
                 )
             }
-            result.append(Sample(id: i, distanceKm: cumulativeM / 1000, elevationM: elev))
+            result.append(Sample(id: i, distanceMi: cumulativeM / 1609.344, elevationM: elev))
             prev = pt
         }
         return result
@@ -48,7 +48,7 @@ struct ElevationProfileView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Chart(samples) { s in
                     AreaMark(
-                        x: .value("Distance", s.distanceKm),
+                        x: .value("Distance", s.distanceMi),
                         y: .value("Elevation", s.elevationM)
                     )
                     .foregroundStyle(
@@ -59,7 +59,7 @@ struct ElevationProfileView: View {
                         )
                     )
                     LineMark(
-                        x: .value("Distance", s.distanceKm),
+                        x: .value("Distance", s.distanceMi),
                         y: .value("Elevation", s.elevationM)
                     )
                     .foregroundStyle(SaplingColors.brand)
@@ -70,7 +70,7 @@ struct ElevationProfileView: View {
                         AxisGridLine()
                         AxisValueLabel {
                             if let d = v.as(Double.self) {
-                                Text(String(format: "%.1f km", d))
+                                Text(String(format: "%.2f mi", d))
                                     .font(.caption2)
                                     .foregroundStyle(SaplingColors.bark)
                             }

@@ -512,13 +512,19 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func addLocation(point: FfiTrackPoint) throws  -> FfiRecordingUpdate?
     
+    func createRoute(name: String, waypoints: [FfiRouteWaypoint], distanceM: Double) throws  -> FfiRoute
+    
     func createSeed(input: FfiCreateSeedInput) throws  -> FfiSeed
+    
+    func deleteRoute(id: String) throws 
     
     func deleteSeed(id: String) throws 
     
     func deleteTrip(id: String) throws 
     
     func exportTripGpx(tripId: String) throws  -> String
+    
+    func getRoute(id: String) throws  -> FfiRoute?
     
     func getSeed(id: String) throws  -> FfiSeed?
     
@@ -532,9 +538,13 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func importTripFromGpx(filePath: String, name: String?) throws  -> FfiTripSummary
     
+    func listRoutes() throws  -> [FfiRoute]
+    
     func listSeeds() throws  -> [FfiSeed]
     
     func listTrips() throws  -> [FfiTripSummary]
+    
+    func renameRoute(id: String, name: String) throws 
     
     func renameTrip(id: String, name: String) throws 
     
@@ -620,12 +630,29 @@ open func addLocation(point: FfiTrackPoint)throws  -> FfiRecordingUpdate?  {
 })
 }
     
+open func createRoute(name: String, waypoints: [FfiRouteWaypoint], distanceM: Double)throws  -> FfiRoute  {
+    return try  FfiConverterTypeFfiRoute_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_create_route(self.uniffiClonePointer(),
+        FfiConverterString.lower(name),
+        FfiConverterSequenceTypeFfiRouteWaypoint.lower(waypoints),
+        FfiConverterDouble.lower(distanceM),$0
+    )
+})
+}
+    
 open func createSeed(input: FfiCreateSeedInput)throws  -> FfiSeed  {
     return try  FfiConverterTypeFfiSeed_lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_create_seed(self.uniffiClonePointer(),
         FfiConverterTypeFfiCreateSeedInput_lower(input),$0
     )
 })
+}
+    
+open func deleteRoute(id: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_delete_route(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
+    )
+}
 }
     
 open func deleteSeed(id: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
@@ -646,6 +673,14 @@ open func exportTripGpx(tripId: String)throws  -> String  {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_export_trip_gpx(self.uniffiClonePointer(),
         FfiConverterString.lower(tripId),$0
+    )
+})
+}
+    
+open func getRoute(id: String)throws  -> FfiRoute?  {
+    return try  FfiConverterOptionTypeFfiRoute.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_get_route(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),$0
     )
 })
 }
@@ -699,6 +734,13 @@ open func importTripFromGpx(filePath: String, name: String?)throws  -> FfiTripSu
 })
 }
     
+open func listRoutes()throws  -> [FfiRoute]  {
+    return try  FfiConverterSequenceTypeFfiRoute.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_list_routes(self.uniffiClonePointer(),$0
+    )
+})
+}
+    
 open func listSeeds()throws  -> [FfiSeed]  {
     return try  FfiConverterSequenceTypeFfiSeed.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
     uniffi_sapling_fn_method_saplingcore_list_seeds(self.uniffiClonePointer(),$0
@@ -711,6 +753,14 @@ open func listTrips()throws  -> [FfiTripSummary]  {
     uniffi_sapling_fn_method_saplingcore_list_trips(self.uniffiClonePointer(),$0
     )
 })
+}
+    
+open func renameRoute(id: String, name: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_rename_route(self.uniffiClonePointer(),
+        FfiConverterString.lower(id),
+        FfiConverterString.lower(name),$0
+    )
+}
 }
     
 open func renameTrip(id: String, name: String)throws   {try rustCallWithError(FfiConverterTypeFfiError_lift) {
@@ -1026,6 +1076,186 @@ public func FfiConverterTypeFfiRecordingUpdate_lift(_ buf: RustBuffer) throws ->
 #endif
 public func FfiConverterTypeFfiRecordingUpdate_lower(_ value: FfiRecordingUpdate) -> RustBuffer {
     return FfiConverterTypeFfiRecordingUpdate.lower(value)
+}
+
+
+public struct FfiRoute {
+    public var id: String
+    public var name: String
+    public var notes: String?
+    public var waypoints: [FfiRouteWaypoint]
+    public var distanceM: Double
+    public var createdAt: String
+    public var updatedAt: String
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(id: String, name: String, notes: String?, waypoints: [FfiRouteWaypoint], distanceM: Double, createdAt: String, updatedAt: String) {
+        self.id = id
+        self.name = name
+        self.notes = notes
+        self.waypoints = waypoints
+        self.distanceM = distanceM
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+}
+
+#if compiler(>=6)
+extension FfiRoute: Sendable {}
+#endif
+
+
+extension FfiRoute: Equatable, Hashable {
+    public static func ==(lhs: FfiRoute, rhs: FfiRoute) -> Bool {
+        if lhs.id != rhs.id {
+            return false
+        }
+        if lhs.name != rhs.name {
+            return false
+        }
+        if lhs.notes != rhs.notes {
+            return false
+        }
+        if lhs.waypoints != rhs.waypoints {
+            return false
+        }
+        if lhs.distanceM != rhs.distanceM {
+            return false
+        }
+        if lhs.createdAt != rhs.createdAt {
+            return false
+        }
+        if lhs.updatedAt != rhs.updatedAt {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(name)
+        hasher.combine(notes)
+        hasher.combine(waypoints)
+        hasher.combine(distanceM)
+        hasher.combine(createdAt)
+        hasher.combine(updatedAt)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRoute: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRoute {
+        return
+            try FfiRoute(
+                id: FfiConverterString.read(from: &buf), 
+                name: FfiConverterString.read(from: &buf), 
+                notes: FfiConverterOptionString.read(from: &buf), 
+                waypoints: FfiConverterSequenceTypeFfiRouteWaypoint.read(from: &buf), 
+                distanceM: FfiConverterDouble.read(from: &buf), 
+                createdAt: FfiConverterString.read(from: &buf), 
+                updatedAt: FfiConverterString.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRoute, into buf: inout [UInt8]) {
+        FfiConverterString.write(value.id, into: &buf)
+        FfiConverterString.write(value.name, into: &buf)
+        FfiConverterOptionString.write(value.notes, into: &buf)
+        FfiConverterSequenceTypeFfiRouteWaypoint.write(value.waypoints, into: &buf)
+        FfiConverterDouble.write(value.distanceM, into: &buf)
+        FfiConverterString.write(value.createdAt, into: &buf)
+        FfiConverterString.write(value.updatedAt, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRoute_lift(_ buf: RustBuffer) throws -> FfiRoute {
+    return try FfiConverterTypeFfiRoute.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRoute_lower(_ value: FfiRoute) -> RustBuffer {
+    return FfiConverterTypeFfiRoute.lower(value)
+}
+
+
+public struct FfiRouteWaypoint {
+    public var latitude: Double
+    public var longitude: Double
+
+    // Default memberwise initializers are never public by default, so we
+    // declare one manually.
+    public init(latitude: Double, longitude: Double) {
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+}
+
+#if compiler(>=6)
+extension FfiRouteWaypoint: Sendable {}
+#endif
+
+
+extension FfiRouteWaypoint: Equatable, Hashable {
+    public static func ==(lhs: FfiRouteWaypoint, rhs: FfiRouteWaypoint) -> Bool {
+        if lhs.latitude != rhs.latitude {
+            return false
+        }
+        if lhs.longitude != rhs.longitude {
+            return false
+        }
+        return true
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(latitude)
+        hasher.combine(longitude)
+    }
+}
+
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeFfiRouteWaypoint: FfiConverterRustBuffer {
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> FfiRouteWaypoint {
+        return
+            try FfiRouteWaypoint(
+                latitude: FfiConverterDouble.read(from: &buf), 
+                longitude: FfiConverterDouble.read(from: &buf)
+        )
+    }
+
+    public static func write(_ value: FfiRouteWaypoint, into buf: inout [UInt8]) {
+        FfiConverterDouble.write(value.latitude, into: &buf)
+        FfiConverterDouble.write(value.longitude, into: &buf)
+    }
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRouteWaypoint_lift(_ buf: RustBuffer) throws -> FfiRouteWaypoint {
+    return try FfiConverterTypeFfiRouteWaypoint.lift(buf)
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public func FfiConverterTypeFfiRouteWaypoint_lower(_ value: FfiRouteWaypoint) -> RustBuffer {
+    return FfiConverterTypeFfiRouteWaypoint.lower(value)
 }
 
 
@@ -1876,6 +2106,30 @@ fileprivate struct FfiConverterOptionTypeFfiRecordingUpdate: FfiConverterRustBuf
 #if swift(>=5.8)
 @_documentation(visibility: private)
 #endif
+fileprivate struct FfiConverterOptionTypeFfiRoute: FfiConverterRustBuffer {
+    typealias SwiftType = FfiRoute?
+
+    public static func write(_ value: SwiftType, into buf: inout [UInt8]) {
+        guard let value = value else {
+            writeInt(&buf, Int8(0))
+            return
+        }
+        writeInt(&buf, Int8(1))
+        FfiConverterTypeFfiRoute.write(value, into: &buf)
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SwiftType {
+        switch try readInt(&buf) as Int8 {
+        case 0: return nil
+        case 1: return try FfiConverterTypeFfiRoute.read(from: &buf)
+        default: throw UniffiInternalError.unexpectedOptionalTag
+        }
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
 fileprivate struct FfiConverterOptionTypeFfiSeed: FfiConverterRustBuffer {
     typealias SwiftType = FfiSeed?
 
@@ -1941,6 +2195,56 @@ fileprivate struct FfiConverterSequenceString: FfiConverterRustBuffer {
         seq.reserveCapacity(Int(len))
         for _ in 0 ..< len {
             seq.append(try FfiConverterString.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiRoute: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiRoute]
+
+    public static func write(_ value: [FfiRoute], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiRoute.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiRoute] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiRoute]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiRoute.read(from: &buf))
+        }
+        return seq
+    }
+}
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+fileprivate struct FfiConverterSequenceTypeFfiRouteWaypoint: FfiConverterRustBuffer {
+    typealias SwiftType = [FfiRouteWaypoint]
+
+    public static func write(_ value: [FfiRouteWaypoint], into buf: inout [UInt8]) {
+        let len = Int32(value.count)
+        writeInt(&buf, len)
+        for item in value {
+            FfiConverterTypeFfiRouteWaypoint.write(item, into: &buf)
+        }
+    }
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> [FfiRouteWaypoint] {
+        let len: Int32 = try readInt(&buf)
+        var seq = [FfiRouteWaypoint]()
+        seq.reserveCapacity(Int(len))
+        for _ in 0 ..< len {
+            seq.append(try FfiConverterTypeFfiRouteWaypoint.read(from: &buf))
         }
         return seq
     }
@@ -2039,7 +2343,13 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_add_location() != 4440) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_create_route() != 16507) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_create_seed() != 2323) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_delete_route() != 36931) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_delete_seed() != 41102) {
@@ -2049,6 +2359,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_export_trip_gpx() != 4610) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_get_route() != 51910) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_get_seed() != 50459) {
@@ -2069,10 +2382,16 @@ private let initializationResult: InitializationResult = {
     if (uniffi_sapling_checksum_method_saplingcore_import_trip_from_gpx() != 11205) {
         return InitializationResult.apiChecksumMismatch
     }
+    if (uniffi_sapling_checksum_method_saplingcore_list_routes() != 40731) {
+        return InitializationResult.apiChecksumMismatch
+    }
     if (uniffi_sapling_checksum_method_saplingcore_list_seeds() != 22673) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_list_trips() != 29418) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_rename_route() != 42709) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_rename_trip() != 35173) {
