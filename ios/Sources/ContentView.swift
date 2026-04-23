@@ -80,12 +80,12 @@ struct ContentView: View {
                         Button {
                             showSeedList = true
                         } label: {
-                            Image(systemName: "mappin.and.ellipse")
+                            Image(systemName: "leaf.fill")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(SaplingColors.ink)
+                                .foregroundStyle(.white)
                                 .frame(width: 40, height: 40)
-                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
-                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                                .background(SaplingColors.brand, in: Circle())
+                                .shadow(color: SaplingColors.brand.opacity(0.45), radius: 6, y: 3)
                         }
 
                         Button {
@@ -247,16 +247,6 @@ struct ContentView: View {
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
 
-                        if viewModel.isRecording {
-                            SeedQuickDropBar { type in
-                                guard let location = viewModel.currentLocation else { return }
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    seedViewModel.quickDropSeed(type: type, at: location.coordinate)
-                                }
-                            }
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-
                         Button {
                             if viewModel.isRecording {
                                 withAnimation { showStopSheet = true }
@@ -331,7 +321,7 @@ struct ContentView: View {
             .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showSeedList) {
-            SeedListView(viewModel: seedViewModel)
+            SeedListView(viewModel: seedViewModel, currentLocation: viewModel.currentLocation?.coordinate)
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showRouteList) {
