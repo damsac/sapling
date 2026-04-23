@@ -12,6 +12,7 @@ struct RootView: View {
     @State private var tripListViewModel: TripListViewModel
     @State private var routeViewModel: RouteBuilderViewModel
     @State private var displayRoute: [CLLocationCoordinate2D]? = nil
+    @State private var activeRoute: FfiRoute? = nil
     @State private var initError: String? = nil
 
     init() {
@@ -42,7 +43,8 @@ struct RootView: View {
                 seedViewModel: seedViewModel,
                 tripListViewModel: tripListViewModel,
                 routeViewModel: routeViewModel,
-                displayRoute: $displayRoute
+                displayRoute: $displayRoute,
+                activeRoute: $activeRoute
             )
             .tabItem { Label("Map", systemImage: "map.fill") }
             .tag(Tab.map)
@@ -51,6 +53,7 @@ struct RootView: View {
                 tripListViewModel: tripListViewModel,
                 routeViewModel: routeViewModel,
                 onStartNavigation: { route in
+                    activeRoute = route
                     displayRoute = route.waypoints.map {
                         CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
                     }

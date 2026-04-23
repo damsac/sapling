@@ -3,14 +3,10 @@ import Observation
 
 @Observable
 class RouteBuilderViewModel {
-    /// Tapped waypoints (the pins the user placed).
     var waypoints: [CLLocationCoordinate2D] = []
-    /// One routed segment per pair of consecutive waypoints.
-    /// `routeSegments[i]` is the path from `waypoints[i]` to `waypoints[i+1]`.
-    var routeSegments: [[CLLocationCoordinate2D]] = []
-    /// Distance in meters for each routed segment.
+    /// Routed segments as full RoutePoints (coordinate + elevation).
+    var routeSegments: [[RoutePoint]] = []
     var segmentDistances: [Double] = []
-    /// Loading state while a segment is being fetched from the router.
     var isRouting: Bool = false
     var isBuilding: Bool = false
     var savedRoutes: [FfiRoute] = []
@@ -22,27 +18,29 @@ class RouteBuilderViewModel {
         self.core = core
     }
 
-    /// Total distance, summing real routed segment distances (not a straight
-    /// line between raw waypoints).
     var distanceMeters: Double {
         segmentDistances.reduce(0, +)
     }
 
-    /// The chained full path across all segments, with duplicate join points
-    /// removed (each segment's first point duplicates the previous segment's
-    /// last point).
-    var fullRoutePath: [CLLocationCoordinate2D] {
+    /// Flat coordinate array for map rendering (no duplicate join points).
+    var fullRouteCoordinates: [CLLocationCoordinate2D] {
         guard !routeSegments.isEmpty else { return [] }
-        var combined: [CLLocationCoordinate2D] = []
-        for (i, segment) in routeSegments.enumerated() {
-            if i == 0 {
-                combined.append(contentsOf: segment)
-            } else {
-                // Drop the first coordinate — it equals the previous segment's last.
-                combined.append(contentsOf: segment.dropFirst())
-            }
+        var out: [CLLocationCoordinate2D] = []
+        for (i, seg) in routeSegments.enumerated() {
+            let coords = seg.map(\.coordinate)
+            out.append(contentsOf: i == 0 ? coords : Array(coords.dropFirst()))
         }
-        return combined
+        return out
+    }
+
+    /// Flat RoutePoint array (coordinate + elevation) for saving and profile.
+    var fullRoutePoints: [RoutePoint] {
+        guard !routeSegments.isEmpty else { return [] }
+        var out: [RoutePoint] = []
+        for (i, seg) in routeSegments.enumerated() {
+            out.append(contentsOf: i == 0 ? seg : Array(seg.dropFirst()))
+        }
+        return out
     }
 
     func startBuilding() {
@@ -56,30 +54,25 @@ class RouteBuilderViewModel {
     func addWaypoint(_ coordinate: CLLocationCoordinate2D) {
         let previous = waypoints.last
         waypoints.append(coordinate)
+        guard let from = previous else { return }
 
-        guard let from = previous else {
-            // First waypoint — nothing to route yet.
-            return
-        }
-
-        let to = coordinate
         isRouting = true
         Task { @MainActor [weak self] in
             guard let self else { return }
             defer { self.isRouting = false }
             do {
-                let result = try await RouteService.route(from: from, to: to)
-                var path = result.path
-                // Anchor to exact tapped coordinates so the route doesn't
-                // visually extend past where the user placed their pins.
-                path.insert(from, at: 0)
-                path.append(to)
-                self.routeSegments.append(path)
-                self.segmentDistances.append(result.distanceM)
+                let segment = try await RouteService.route(from: from, to: coordinate)
+                var pts = segment.points
+                pts.insert(RoutePoint(coordinate: from, elevation: pts.first?.elevation), at: 0)
+                pts.append(RoutePoint(coordinate: coordinate, elevation: pts.last?.elevation))
+                self.routeSegments.append(pts)
+                self.segmentDistances.append(segment.distanceM)
             } catch {
-                // Fall back to a straight line so the UX doesn't break.
-                self.routeSegments.append([from, to])
-                self.segmentDistances.append(haversine(from, to))
+                self.routeSegments.append([
+                    RoutePoint(coordinate: from, elevation: nil),
+                    RoutePoint(coordinate: coordinate, elevation: nil)
+                ])
+                self.segmentDistances.append(haversine(from, coordinate))
                 self.lastError = "Couldn't snap to trail — using straight line."
             }
         }
@@ -88,12 +81,8 @@ class RouteBuilderViewModel {
     func undoLast() {
         guard !waypoints.isEmpty else { return }
         waypoints.removeLast()
-        if !routeSegments.isEmpty {
-            routeSegments.removeLast()
-        }
-        if !segmentDistances.isEmpty {
-            segmentDistances.removeLast()
-        }
+        if !routeSegments.isEmpty { routeSegments.removeLast() }
+        if !segmentDistances.isEmpty { segmentDistances.removeLast() }
     }
 
     func cancel() {
@@ -105,20 +94,18 @@ class RouteBuilderViewModel {
     }
 
     func saveRoute(name: String) {
-        // Prefer the full routed path so the saved route preserves the
-        // actual snapped geometry, not just the raw pin coordinates. Fall
-        // back to raw waypoints if we don't have any routed segments yet
-        // (e.g. a single-point "route").
-        let path = fullRoutePath
-        let coordsToSave: [CLLocationCoordinate2D] = path.isEmpty ? waypoints : path
+        let pts = fullRoutePoints
+        let coordsToSave: [CLLocationCoordinate2D] = pts.isEmpty ? waypoints : pts.map(\.coordinate)
+        let elevsToSave: [Double?] = pts.isEmpty ? Array(repeating: nil, count: waypoints.count) : pts.map(\.elevation)
 
-        let ffiwaypoints = coordsToSave.map {
-            FfiRouteWaypoint(latitude: $0.latitude, longitude: $0.longitude)
+        let ffiWaypoints = zip(coordsToSave, elevsToSave).map { coord, elev in
+            FfiRouteWaypoint(latitude: coord.latitude, longitude: coord.longitude, elevation: elev)
         }
+
         do {
             let route = try core.createRoute(
                 name: name,
-                waypoints: ffiwaypoints,
+                waypoints: ffiWaypoints,
                 distanceM: distanceMeters
             )
             savedRoutes.insert(route, at: 0)
@@ -133,11 +120,8 @@ class RouteBuilderViewModel {
     }
 
     func loadRoutes() {
-        do {
-            savedRoutes = try core.listRoutes()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        do { savedRoutes = try core.listRoutes() }
+        catch { lastError = error.localizedDescription }
     }
 
     func deleteRoute(_ id: String) {
@@ -166,10 +150,7 @@ class RouteBuilderViewModel {
     }
 }
 
-private func haversine(
-    _ a: CLLocationCoordinate2D,
-    _ b: CLLocationCoordinate2D
-) -> Double {
+private func haversine(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {
     let R = 6_371_000.0
     let lat1 = a.latitude * .pi / 180
     let lat2 = b.latitude * .pi / 180

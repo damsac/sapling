@@ -228,17 +228,18 @@ impl From<TripSummary> for FfiTripSummary {
 pub struct FfiRouteWaypoint {
     pub latitude: f64,
     pub longitude: f64,
+    pub elevation: Option<f64>,
 }
 
 impl From<RouteWaypoint> for FfiRouteWaypoint {
     fn from(w: RouteWaypoint) -> Self {
-        FfiRouteWaypoint { latitude: w.latitude, longitude: w.longitude }
+        FfiRouteWaypoint { latitude: w.latitude, longitude: w.longitude, elevation: w.elevation }
     }
 }
 
 impl From<FfiRouteWaypoint> for RouteWaypoint {
     fn from(w: FfiRouteWaypoint) -> Self {
-        RouteWaypoint { latitude: w.latitude, longitude: w.longitude }
+        RouteWaypoint { latitude: w.latitude, longitude: w.longitude, elevation: w.elevation }
     }
 }
 
