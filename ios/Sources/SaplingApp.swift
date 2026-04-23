@@ -4,7 +4,7 @@ import SwiftUI
 struct SaplingApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }

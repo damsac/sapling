@@ -4,6 +4,11 @@ import MapLibreSwiftDSL
 import MapLibreSwiftUI
 import SwiftUI
 
+private class RouteBuildingProxy {
+    var isBuilding = false
+    var addWaypoint: ((CLLocationCoordinate2D) -> Void)?
+}
+
 struct TrailMapView: View {
     let trackCoordinates: [CLLocationCoordinate2D]
     let userLocation: CLLocation?
@@ -11,6 +16,20 @@ struct TrailMapView: View {
     let seeds: [FfiSeed]
     var onLongPress: ((CLLocationCoordinate2D) -> Void)? = nil
     var onSeedTapped: ((FfiSeed) -> Void)? = nil
+
+    /// Route builder mode — when true, taps add waypoints instead of selecting seeds
+    var isRouteBuilding: Bool = false
+    /// The tapped waypoint coordinates — used to render the pin dots.
+    var routeWaypoints: [CLLocationCoordinate2D]? = nil
+    /// The routed path polyline (snapped to roads/trails). When nil, the
+    /// polyline falls back to straight lines between `routeWaypoints`.
+    var routePath: [CLLocationCoordinate2D]? = nil
+    var onRouteWaypointAdded: ((CLLocationCoordinate2D) -> Void)? = nil
+    /// True while a routing request is in flight — shows a small spinner.
+    var isRouting: Bool = false
+
+    /// A saved route to display on the map (view mode)
+    var displayRoute: [CLLocationCoordinate2D]? = nil
 
     /// Pending seed for quick-drop overlay (draggable, not yet saved).
     var pendingSeed: PendingSeed? = nil
@@ -32,6 +51,10 @@ struct TrailMapView: View {
     /// Live snapshot of the map's projection, so overlays use MapLibre's real
     /// coordinate→point conversion instead of a hand-rolled approximation.
     @State private var mapProxy: MapViewProxy?
+    /// Direct reference to the underlying MLNMapView, captured via the
+    /// unsafe modifier. Used for accurate screen↔coordinate conversion in
+    /// the route-building tap overlay.
+    @State private var mlnMapView: MLNMapView?
 
     /// Drag offset for the pending seed pin (in points, from its dropped position).
     @State private var pendingDragOffset: CGSize = .zero
@@ -41,6 +64,9 @@ struct TrailMapView: View {
     @State private var isPulsing: Bool = false
     /// Debounce task for visible bounds updates.
     @State private var boundsUpdateTask: Task<Void, Never>?
+    /// Reference-type proxy so the onTapMapGesture closure — registered once
+    /// at map creation — always sees current building state without re-registration.
+    @State private var routeProxy = RouteBuildingProxy()
 
     var body: some View {
         GeometryReader { geo in
@@ -107,6 +133,25 @@ struct TrailMapView: View {
                         .strokeWidth(0)
                         .predicate(NSPredicate(format: "seedType == %@", "Custom"))
 
+                    // Route builder / display polyline — shown when building or viewing a route.
+                    // Prefer the snapped `routePath` when available; fall back to straight
+                    // lines between `routeWaypoints` (e.g. during the first segment's
+                    // routing request), or the saved route being viewed.
+                    let routeCoords = routePath ?? routeWaypoints ?? displayRoute ?? []
+                    let routeSource = ShapeSource(identifier: "route-line") {
+                        MLNPolylineFeature(
+                            coordinates: routeCoords.isEmpty
+                                ? [CLLocationCoordinate2D(latitude: 0, longitude: 0)]
+                                : routeCoords
+                        )
+                    }
+                    LineStyleLayer(identifier: "route-line-layer", source: routeSource)
+                        .lineColor(UIColor(SaplingColors.brand))
+                        .lineWidth(routeCoords.isEmpty ? 0 : 3)
+                        .lineDashPattern([2, 1.5])
+                        .lineCap(.round)
+                        .lineJoin(.round)
+
                     // User location blue dot — drawn above seeds so it's always visible.
                     let userPoints = userLocationFeatures()
                     let userSource = ShapeSource(identifier: "user-location") {
@@ -131,6 +176,10 @@ struct TrailMapView: View {
                         .position(.bottomRight)
                 }
                 .onTapMapGesture(onTapChanged: { context in
+                    if routeProxy.isBuilding {
+                        routeProxy.addWaypoint?(context.coordinate)
+                        return
+                    }
                     let threshold = tapThresholdMeters(
                         at: context.coordinate,
                         zoom: currentZoom
@@ -149,6 +198,12 @@ struct TrailMapView: View {
                         hasInitiallyNavigated = true
                     }
                     onVisibleBoundsChanged?(visibleBounds(in: geo.size))
+                    routeProxy.isBuilding = isRouteBuilding
+                    routeProxy.addWaypoint = onRouteWaypointAdded
+                }
+                .onChange(of: isRouteBuilding) { _, new in
+                    routeProxy.isBuilding = new
+                    routeProxy.addWaypoint = new ? onRouteWaypointAdded : nil
                 }
                 .onChange(of: userLocation?.coordinate.latitude) { _, _ in
                     if let coordinate = userLocation?.coordinate, !hasInitiallyNavigated {
@@ -179,6 +234,51 @@ struct TrailMapView: View {
                     // (orient yourself to the world, not the screen).
                     controller.mapView.isRotateEnabled = false
                     controller.mapView.isPitchEnabled = false
+                    // Capture the MLNMapView so we can use its exact
+                    // screen↔coordinate projection for tap hit-testing.
+                    mlnMapView = controller.mapView
+                }
+
+                // MARK: - Waypoint Pin Overlays
+                // Rendered in SwiftUI so dots appear immediately on first tap
+                // without waiting for MapLibre layer updates.
+                ForEach(Array((routeWaypoints ?? []).enumerated()), id: \.offset) { idx, coord in
+                    let screenPos = coordinateToScreen(coord, in: geo.size)
+                    ZStack {
+                        Circle()
+                            .fill(.white)
+                            .frame(width: 22, height: 22)
+                        Circle()
+                            .fill(SaplingColors.brand)
+                            .frame(width: 15, height: 15)
+                    }
+                    .position(screenPos)
+                    .allowsHitTesting(false)
+                }
+
+                // MARK: - Routing Spinner
+
+                // Subtle loading indicator while a route segment is being
+                // fetched from the router. Sits at top-center of the map.
+                if isRouteBuilding && isRouting {
+                    VStack {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Routing…")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(SaplingColors.ink)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(SaplingColors.parchment.opacity(0.92), in: Capsule())
+                        .shadow(color: .black.opacity(0.12), radius: 4, y: 2)
+                        .padding(.top, 12)
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
                 }
 
                 // MARK: - Heading Wedge
@@ -298,9 +398,9 @@ struct TrailMapView: View {
                         } label: {
                             Image(systemName: "xmark")
                                 .font(.caption.weight(.bold))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(SaplingColors.bark)
                                 .padding(6)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                         }
                     }
                     .position(
@@ -370,11 +470,18 @@ struct TrailMapView: View {
         )
     }
 
-    /// Approximate conversion from screen position back to coordinate.
+    /// Convert a screen point back to a geographic coordinate.
+    /// Uses MapLibre's real projection when the underlying `MLNMapView` has
+    /// been captured; falls back to a Web Mercator approximation in the
+    /// brief window before the mapView reference is populated.
     private func screenToCoordinate(
         _ point: CGPoint,
         in size: CGSize
     ) -> CLLocationCoordinate2D {
+        if let mapView = mlnMapView {
+            return mapView.convert(point, toCoordinateFrom: mapView)
+        }
+
         let center = cameraCenter
         let scale = pow(2.0, currentZoom) * 256 / 360
 

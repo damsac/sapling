@@ -2,55 +2,53 @@ import SwiftUI
 import CoreLocation
 import MapLibre
 
+/// Map tab — live recording, seed dropping, route building.
 struct ContentView: View {
-    @State private var viewModel: RecordingViewModel
-    @State private var seedViewModel: SeedViewModel
-    @State private var tripListViewModel: TripListViewModel
+    var viewModel: RecordingViewModel
+    var seedViewModel: SeedViewModel
+    var tripListViewModel: TripListViewModel
+    var routeViewModel: RouteBuilderViewModel
+    @Binding var displayRoute: [CLLocationCoordinate2D]?
+
     @State private var showBackgroundModal: Bool = false
     @State private var showOfflineSheet: Bool = false
-    @State private var showTripList: Bool = false
     @State private var showSeedList: Bool = false
     @State private var showStopSheet: Bool = false
+    @State private var showRouteSave: Bool = false
+    @State private var routeSaveName: String = ""
     @State private var visibleBounds: MLNCoordinateBounds?
-    @State private var initError: String? = nil
     @State private var snapToLocationTrigger: Bool = false
     private var offlineManager = OfflineMapManager.shared
 
-    init() {
-        let documentsDir = FileManager.default.urls(
-            for: .documentDirectory,
-            in: .userDomainMask
-        ).first!
-        let dbPath = documentsDir.appendingPathComponent("sapling.db").path
-        do {
-            let core = try SaplingCore(dbPath: dbPath)
-            _viewModel = State(initialValue: RecordingViewModel(core: core))
-            _seedViewModel = State(initialValue: SeedViewModel(core: core))
-            _tripListViewModel = State(initialValue: TripListViewModel(core: core))
-        } catch {
-            // Create a fallback in-memory core so views can still render
-            let fallbackCore = try! SaplingCore(dbPath: ":memory:")
-            _viewModel = State(initialValue: RecordingViewModel(core: fallbackCore))
-            _seedViewModel = State(initialValue: SeedViewModel(core: fallbackCore))
-            _tripListViewModel = State(initialValue: TripListViewModel(core: fallbackCore))
-            _initError = State(initialValue: "Failed to open database: \(error.localizedDescription)")
-        }
+    init(viewModel: RecordingViewModel, seedViewModel: SeedViewModel, tripListViewModel: TripListViewModel, routeViewModel: RouteBuilderViewModel, displayRoute: Binding<[CLLocationCoordinate2D]?>) {
+        self.viewModel = viewModel
+        self.seedViewModel = seedViewModel
+        self.tripListViewModel = tripListViewModel
+        self.routeViewModel = routeViewModel
+        self._displayRoute = displayRoute
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Full-screen map with seed markers and gestures
             TrailMapView(
                 trackCoordinates: viewModel.trackCoordinates,
                 userLocation: viewModel.currentLocation,
                 userHeading: viewModel.currentHeading,
                 seeds: seedViewModel.seeds,
-                onLongPress: { coordinate in
+                onLongPress: routeViewModel.isBuilding ? nil : { coordinate in
                     seedViewModel.startSeedCreation(at: coordinate)
                 },
-                onSeedTapped: { seed in
+                onSeedTapped: routeViewModel.isBuilding ? nil : { seed in
                     seedViewModel.selectSeed(seed)
                 },
+                isRouteBuilding: routeViewModel.isBuilding,
+                routeWaypoints: routeViewModel.isBuilding ? routeViewModel.waypoints : nil,
+                routePath: routeViewModel.isBuilding ? routeViewModel.fullRoutePath : nil,
+                onRouteWaypointAdded: { coord in
+                    routeViewModel.addWaypoint(coord)
+                },
+                isRouting: routeViewModel.isRouting,
+                displayRoute: displayRoute,
                 pendingSeed: seedViewModel.pendingSeed,
                 onPendingSeedDrag: { coordinate in
                     seedViewModel.updatePendingSeedPosition(coordinate)
@@ -72,47 +70,42 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
 
-            // Top bar buttons — trip list (leading) and offline map (trailing)
+            // Left-side floating controls
             VStack {
-                HStack {
-                    // Top-left buttons — trips and seeds
+                HStack(alignment: .top) {
                     VStack(spacing: 12) {
-                        Button {
-                            tripListViewModel.loadTrips()
-                            showTripList = true
-                        } label: {
-                            Image(systemName: "list.bullet")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
-                                .frame(width: 40, height: 40)
-                                .background(.thinMaterial, in: Circle())
-                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
-                        }
-
                         Button {
                             showSeedList = true
                         } label: {
                             Image(systemName: "mappin.and.ellipse")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(SaplingColors.ink)
                                 .frame(width: 40, height: 40)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                         }
-                    }
-                    .padding(.leading, 16)
-                    .padding(.top, 60)
 
-                    Spacer()
+                        Button {
+                            if routeViewModel.isBuilding {
+                                withAnimation { routeViewModel.cancel() }
+                            } else {
+                                displayRoute = nil
+                                withAnimation { routeViewModel.startBuilding() }
+                            }
+                        } label: {
+                            Image(systemName: routeViewModel.isBuilding ? "xmark" : "point.3.filled.connected.trianglepath.dotted")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(routeViewModel.isBuilding ? SaplingColors.stopRecording : SaplingColors.ink)
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    routeViewModel.isBuilding
+                                        ? SaplingColors.stopRecording.opacity(0.12)
+                                        : SaplingColors.parchment.opacity(0.92),
+                                    in: Circle()
+                                )
+                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        }
 
-                    // Live compass — N always points to true north; rotates
-                    // as the phone rotates so you can orient yourself.
-                    CompassWidget(heading: viewModel.currentHeading)
-                        .padding(.top, 60)
-
-                    Spacer()
-
-                    VStack(spacing: 12) {
                         OfflineMapButton(
                             packCount: offlineManager.packs.count,
                             action: { showOfflineSheet = true }
@@ -123,66 +116,65 @@ struct ContentView: View {
                         } label: {
                             Image(systemName: "location.fill")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(SaplingColors.ink)
                                 .frame(width: 40, height: 40)
-                                .background(.thinMaterial, in: Circle())
+                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
                         }
+
+                        CompassWidget(heading: viewModel.currentHeading)
                     }
-                    .padding(.trailing, 16)
-                    .padding(.top, 60)
+                    .padding(.leading, 16)
+                    .padding(.top, viewModel.isRecording ? 80 : 60)
+
+                    Spacer()
                 }
                 Spacer()
             }
 
-            // Recording controls overlay
+            // Recording controls
             VStack {
-                // Stats bar at top when recording
                 if viewModel.isRecording {
-                    HStack(spacing: 16) {
-                        VStack {
-                            Text(formatDistance(viewModel.distanceMeters))
-                                .font(.title3.monospacedDigit())
-                                .fontWeight(.semibold)
-                            Text("Distance")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        VStack {
-                            Text(formatElevation(viewModel.elevationGain))
-                                .font(.title3.monospacedDigit())
-                                .fontWeight(.semibold)
-                            Text("Gain")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        VStack {
-                            Text(formatDuration(viewModel.elapsedMs))
-                                .font(.title3.monospacedDigit())
-                                .fontWeight(.semibold)
-                            Text("Time")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+                    HStack(spacing: 0) {
+                        LiveStat(value: formatDistance(viewModel.distanceMeters), label: "Distance")
+                        Divider().frame(height: 32)
+                        LiveStat(value: formatElevation(viewModel.elevationGain), label: "Gain")
+                        Divider().frame(height: 32)
+                        LiveStat(value: formatDuration(viewModel.elapsedMs), label: "Time")
                     }
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.top)
+                    .padding(.vertical, 12)
+                    .background(SaplingColors.parchment.opacity(0.92), in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(SaplingColors.brand.opacity(0.35), lineWidth: 1.5)
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
 
                 Spacer()
 
-                // Seed creation sheets (anchored to bottom)
+                if routeViewModel.isBuilding {
+                    RouteBuilderPanel(
+                        waypointCount: routeViewModel.waypoints.count,
+                        distanceMeters: routeViewModel.distanceMeters,
+                        onUndo: { routeViewModel.undoLast() },
+                        onCancel: {
+                            withAnimation { routeViewModel.cancel() }
+                        },
+                        onSave: {
+                            routeSaveName = ""
+                            showRouteSave = true
+                        }
+                    )
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.bottom, 8)
+                }
+
                 if seedViewModel.isShowingTypePicker {
                     SeedTypePicker(
-                        onSelect: { type in
-                            seedViewModel.selectType(type)
-                        },
-                        onCancel: {
-                            seedViewModel.cancelCreation()
-                        }
+                        onSelect: { type in seedViewModel.selectType(type) },
+                        onCancel: { seedViewModel.cancelCreation() }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
@@ -195,12 +187,8 @@ struct ContentView: View {
                     SeedQuickAdd(
                         seedType: type,
                         coordinate: coord,
-                        onSave: { title, notes in
-                            seedViewModel.saveSeed(title: title, notes: notes)
-                        },
-                        onCancel: {
-                            seedViewModel.cancelCreation()
-                        }
+                        onSave: { title, notes in seedViewModel.saveSeed(title: title, notes: notes) },
+                        onCancel: { seedViewModel.cancelCreation() }
                     )
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.bottom, 8)
@@ -217,21 +205,17 @@ struct ContentView: View {
                     .padding(.bottom, 8)
                 }
 
-                // Seed quick-drop bar + record/stop button (hidden during seed sheets)
                 if !seedViewModel.isShowingTypePicker
                     && !seedViewModel.isShowingQuickAdd
                     && !seedViewModel.isShowingDetail
+                    && !routeViewModel.isBuilding
                 {
                     VStack(spacing: 16) {
-                        // Quick-drop seed bar — only visible while recording
                         if viewModel.isRecording {
                             SeedQuickDropBar { type in
                                 guard let location = viewModel.currentLocation else { return }
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    seedViewModel.quickDropSeed(
-                                        type: type,
-                                        at: location.coordinate
-                                    )
+                                    seedViewModel.quickDropSeed(type: type, at: location.coordinate)
                                 }
                             }
                             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -262,8 +246,8 @@ struct ContentView: View {
             .animation(.easeInOut(duration: 0.25), value: seedViewModel.isShowingDetail)
             .animation(.easeInOut(duration: 0.25), value: viewModel.isRecording)
             .animation(.easeInOut(duration: 0.25), value: seedViewModel.pendingSeed)
+            .animation(.easeInOut(duration: 0.25), value: routeViewModel.isBuilding)
 
-            // Background location permission modal
             if showBackgroundModal {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
@@ -295,15 +279,10 @@ struct ContentView: View {
                 TripSummarySheet(
                     summary: summary,
                     trackCoordinates: viewModel.lastTripTrack,
-                    onDismiss: {
-                        viewModel.dismissTripSummary()
-                    },
-                    onRename: { name in
-                        viewModel.renameLastTrip(name: name)
-                    },
-                    onUpdateNotes: { notes in
-                        viewModel.updateLastTripNotes(notes: notes)
-                    }
+                    onDismiss: { viewModel.dismissTripSummary() },
+                    onRename: { name in viewModel.renameLastTrip(name: name) },
+                    onUpdateNotes: { notes in viewModel.updateLastTripNotes(notes: notes) },
+                    onExportGpx: { tripListViewModel.exportGpx(trip: summary) }
                 )
             }
         }
@@ -315,22 +294,34 @@ struct ContentView: View {
             )
             .presentationDetents([.medium, .large])
         }
-        .sheet(isPresented: $showTripList) {
-            TripListView(viewModel: tripListViewModel)
-                .presentationDetents([.medium, .large])
-        }
         .sheet(isPresented: $showSeedList) {
             SeedListView(viewModel: seedViewModel)
                 .presentationDetents([.medium, .large])
+        }
+        .alert("Name Your Route", isPresented: $showRouteSave) {
+            TextField("Route name", text: $routeSaveName)
+            Button("Save") {
+                let name = routeSaveName.trimmingCharacters(in: .whitespaces)
+                withAnimation { routeViewModel.saveRoute(name: name.isEmpty ? "Untitled Route" : name) }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("How many waypoints: \(routeViewModel.waypoints.count)")
+        }
+        .alert("Route Error", isPresented: Binding(
+            get: { routeViewModel.lastError != nil },
+            set: { if !$0 { routeViewModel.lastError = nil } }
+        )) {
+            Button("OK") { routeViewModel.lastError = nil }
+        } message: {
+            Text(routeViewModel.lastError ?? "")
         }
         .sheet(isPresented: $showStopSheet) {
             StopRecordingSheet(
                 distanceMeters: viewModel.distanceMeters,
                 elevationGain: viewModel.elevationGain,
                 elapsedMs: viewModel.elapsedMs,
-                onResume: {
-                    showStopSheet = false
-                },
+                onResume: { showStopSheet = false },
                 onSave: {
                     showStopSheet = false
                     viewModel.stopRecording()
@@ -349,20 +340,7 @@ struct ContentView: View {
         } message: {
             Text(viewModel.lastError ?? seedViewModel.lastError ?? "An unknown error occurred.")
         }
-        .alert("Database Error", isPresented: Binding(
-            get: { initError != nil },
-            set: { if !$0 { initError = nil } }
-        )) {
-            Button("OK") { initError = nil }
-        } message: {
-            Text(initError ?? "An unknown error occurred.")
-        }
-        .fontDesign(.rounded)
         .onAppear {
-            // Start location stream on launch if the user has already granted
-            // permission, so the blue dot and snap-to-location work before
-            // they hit Record. If status is .notDetermined, we let the first
-            // Record tap trigger the prompt.
             let status = LocationProvider.authorizationStatus
             if status == .authorizedWhenInUse || status == .authorizedAlways {
                 viewModel.startLocationUpdates()
@@ -370,43 +348,49 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Record Tap Authorization Check
-
     private func handleRecordTap() {
         let status = LocationProvider.authorizationStatus
-
         switch status {
         case .authorizedAlways:
-            // Full background access — start immediately
             viewModel.startRecording()
-
         case .authorizedWhenInUse:
             let hideModal = UserDefaults.standard.bool(forKey: "hideBackgroundLocationModal")
             if hideModal {
-                // User opted out of the reminder — just record
                 viewModel.startRecording()
             } else {
                 withAnimation { showBackgroundModal = true }
             }
-
         case .notDetermined:
-            // System will prompt automatically when location updates start
             viewModel.startRecording()
-
         case .denied, .restricted:
-            // Location fully disabled — show the modal so they can go to Settings
             withAnimation { showBackgroundModal = true }
-
         @unknown default:
             viewModel.startRecording()
         }
     }
+}
 
+// MARK: - Live Recording Stat Cell
+
+private struct LiveStat: View {
+    let value: String
+    let label: String
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.title3.monospacedDigit())
+                .fontWeight(.semibold)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(SaplingColors.bark)
+        }
+        .frame(maxWidth: .infinity)
+    }
 }
 
 // MARK: - Seed Quick-Drop Bar
 
-/// Horizontal row of 5 seed type buttons in a frosted glass pill.
 struct SeedQuickDropBar: View {
     let onSelect: (FfiSeedType) -> Void
 
@@ -426,13 +410,11 @@ struct SeedQuickDropBar: View {
                                     .foregroundStyle(.white)
                             }
                             .overlay {
-                                Circle()
-                                    .stroke(.white, lineWidth: 2)
+                                Circle().stroke(.white, lineWidth: 2)
                             }
-
                         Text(type.displayName)
                             .font(.caption2)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(SaplingColors.ink)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -440,16 +422,13 @@ struct SeedQuickDropBar: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
+        .background(SaplingColors.parchment.opacity(0.92), in: Capsule())
         .padding(.horizontal, 16)
     }
 }
 
 // MARK: - Compass Widget
 
-/// A floating compass rose. The "N" label points to true north at all times,
-/// rotating against the phone's heading. When the heading is not yet valid
-/// (uncalibrated magnetometer), renders a neutral placeholder.
 struct CompassWidget: View {
     let heading: CLHeading?
 
@@ -461,24 +440,19 @@ struct CompassWidget: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(.thinMaterial)
+                .fill(SaplingColors.parchment.opacity(0.92))
                 .frame(width: 44, height: 44)
                 .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
             if let direction {
                 ZStack {
-                    // North marker — red label plus a tick emanating inward
                     VStack(spacing: 1) {
                         Text("N")
                             .font(.system(size: 10, weight: .heavy))
                             .foregroundStyle(.red)
-                        Rectangle()
-                            .fill(.red)
-                            .frame(width: 2, height: 6)
+                        Rectangle().fill(.red).frame(width: 2, height: 6)
                         Spacer()
-                        Rectangle()
-                            .fill(.secondary)
-                            .frame(width: 1, height: 4)
+                        Rectangle().fill(.secondary).frame(width: 1, height: 4)
                         Text("S")
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.secondary)
@@ -493,5 +467,73 @@ struct CompassWidget: View {
             }
         }
         .accessibilityLabel("Compass, \(direction.map { "pointing \(Int($0))°" } ?? "calibrating")")
+    }
+}
+
+// MARK: - Route Builder Panel
+
+struct RouteBuilderPanel: View {
+    let waypointCount: Int
+    let distanceMeters: Double
+    let onUndo: () -> Void
+    let onCancel: () -> Void
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(waypointCount == 0 ? "Tap map to add points" : formatDistance(distanceMeters))
+                        .font(.headline)
+                        .foregroundStyle(SaplingColors.ink)
+                    Text("\(waypointCount) waypoint\(waypointCount == 1 ? "" : "s")")
+                        .font(.caption)
+                        .foregroundStyle(SaplingColors.bark)
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Button(action: onUndo) {
+                        Image(systemName: "arrow.uturn.backward")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(waypointCount == 0 ? SaplingColors.bark.opacity(0.4) : SaplingColors.ink)
+                            .frame(width: 36, height: 36)
+                            .background(SaplingColors.stone, in: Circle())
+                    }
+                    .disabled(waypointCount == 0)
+
+                    Button(action: onCancel) {
+                        Text("Cancel")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(SaplingColors.ink)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(SaplingColors.stone, in: Capsule())
+                    }
+
+                    Button(action: onSave) {
+                        Text("Save")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                waypointCount < 2 ? SaplingColors.brand.opacity(0.4) : SaplingColors.brand,
+                                in: Capsule()
+                            )
+                    }
+                    .disabled(waypointCount < 2)
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(SaplingColors.parchment.opacity(0.96), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(SaplingColors.brand.opacity(0.3), lineWidth: 1.5)
+        )
+        .padding(.horizontal, 16)
+        .padding(.bottom, 40)
+        .shadow(color: .black.opacity(0.12), radius: 8, y: 2)
     }
 }

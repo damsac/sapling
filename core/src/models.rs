@@ -106,6 +106,25 @@ pub struct RecordingUpdate {
     pub point_count: u32,
 }
 
+/// A waypoint in a planned route — just a coordinate pair.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RouteWaypoint {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
+/// A planned route (distinct from a recorded trip).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Route {
+    pub id: String,
+    pub name: String,
+    pub notes: Option<String>,
+    pub waypoints: Vec<RouteWaypoint>,
+    pub distance_m: f64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
 /// Summary of a completed trip.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TripSummary {

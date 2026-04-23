@@ -66,7 +66,7 @@ struct BackgroundLocationModal: View {
             .padding(.bottom, 20)
         }
         .padding(.horizontal, 16)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 20))
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 32)
     }
 }

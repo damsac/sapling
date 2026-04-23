@@ -13,9 +13,9 @@ struct OfflineMapButton: View {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: "arrow.down.to.line.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(SaplingColors.ink)
                     .frame(width: 44, height: 44)
-                    .background(.thinMaterial, in: Circle())
+                    .background(SaplingColors.parchment.opacity(0.92), in: Circle())
                     .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
 
                 // Badge showing saved pack count

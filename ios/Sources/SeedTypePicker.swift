@@ -10,12 +10,12 @@ struct SeedTypePicker: View {
             HStack {
                 Text("Plant a Seed")
                     .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(SaplingColors.ink)
                 Spacer()
                 Button(action: onCancel) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title3)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(SaplingColors.bark.opacity(0.5))
                 }
             }
             .padding(.horizontal)
@@ -38,7 +38,7 @@ struct SeedTypePicker: View {
 
                             Text(type.displayName)
                                 .font(.caption)
-                                .foregroundStyle(.primary)
+                                .foregroundStyle(SaplingColors.bark)
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -47,7 +47,7 @@ struct SeedTypePicker: View {
             .padding(.horizontal, 4)
         }
         .padding(.vertical, 20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
     }
 }

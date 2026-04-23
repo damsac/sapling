@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sapling — Brand Directions</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, 'SF Pro Rounded', 'SF Pro Display', sans-serif;
+    background: #1a1a18;
+    color: #f0ede8;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 15px;
+    color: #888;
+    margin-bottom: 60px;
+  }
+
+  .direction-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+
+  .direction-header h2 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+
+  .direction-header p {
+    font-size: 14px;
+    color: #aaa;
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.5;
+  }
+
+  .direction-section {
+    margin-bottom: 80px;
+  }
+
+  .phone-row {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  /* Phone shell */
+  .phone {
+    width: 280px;
+    height: 580px;
+    border-radius: 40px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+
+  .phone-label {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: #666;
+    margin-top: 10px;
+  }
+
+  /* ── DIRECTION 1: FIELD JOURNAL ── */
+
+  .fj-bg { background: #f4f0e8; }
+
+  .fj-map {
+    width: 100%;
+    height: 340px;
+    background: linear-gradient(160deg, #d4cdb8 0%, #c8c0a8 40%, #bfb898 70%, #d0c9b0 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .fj-map::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(139,120,80,0.12) 28px, rgba(139,120,80,0.12) 29px),
+      repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(139,120,80,0.12) 28px, rgba(139,120,80,0.12) 29px);
+  }
+
+  .fj-contour {
+    position: absolute;
+    top: 60px;
+    left: 30px;
+    width: 180px;
+    height: 120px;
+    border: 1.5px solid rgba(139,120,80,0.35);
+    border-radius: 60% 40% 55% 45%;
+  }
+  .fj-contour:nth-child(2) { top: 80px; left: 50px; width: 140px; height: 90px; border-color: rgba(139,120,80,0.25); }
+  .fj-contour:nth-child(3) { top: 100px; left: 70px; width: 100px; height: 60px; border-color: rgba(139,120,80,0.18); }
+
+  .fj-trail {
+    position: absolute;
+    top: 80px;
+    left: 40px;
+    width: 160px;
+    height: 120px;
+    border: none;
+    border-top: 3px solid #7a6840;
+    border-radius: 60% 40% 0 0;
+    opacity: 0.7;
+  }
+
+  .fj-location-dot {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #4a6741;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    top: 100px;
+    left: 156px;
+  }
+
+  .fj-location-dot::after {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    background: rgba(74,103,65,0.2);
+    border-radius: 50%;
+    top: -10px;
+    left: -10px;
+  }
+
+  /* Seed pins on map */
+  .fj-pin {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+  }
+
+  .fj-bottom-sheet {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 260px;
+    background: #f4f0e8;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 16px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+  }
+
+  .fj-pill {
+    width: 36px;
+    height: 4px;
+    background: #c8bfa8;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .fj-record-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .fj-stat-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .fj-stat-card {
+    flex: 1;
+    background: #ede9e0;
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .fj-stat-val { font-size: 16px; font-weight: 700; color: #2d2a22; font-variant-numeric: tabular-nums; }
+  .fj-stat-label { font-size: 10px; color: #8a8070; margin-top: 2px; font-weight: 500; }
+
+  .fj-record-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #4a6741;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(74,103,65,0.4);
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+
+  .fj-record-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 3px solid white;
+    position: relative;
+  }
+
+  .fj-record-icon::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .fj-quick-seeds {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .fj-seed-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    border: 2px solid rgba(255,255,255,0.6);
+  }
+
+  /* Top buttons */
+  .fj-top-btns {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .fj-glass-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(244,240,232,0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+
+  /* Color palette display */
+  .palette-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .swatch-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+
+  .swatch-name {
+    font-size: 11px;
+    color: #aaa;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .swatch-hex {
+    font-size: 10px;
+    color: #666;
+    font-family: 'SF Mono', monospace;
+  }
+
+  /* ── DIRECTION 2: PNW MINIMAL ── */
+
+  .pnw-bg { background: #f0ede9; }
+
+  .pnw-map {
+    width: 100%;
+    height: 340px;
+    background: linear-gradient(170deg, #c8d4da 0%, #b8cad2 30%, #a8bec8 60%, #b4c8d0 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .pnw-map::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 32px, rgba(80,100,120,0.08) 32px, rgba(80,100,120,0.08) 33px),
+      repeating-linear-gradient(90deg, transparent, transparent 32px, rgba(80,100,120,0.08) 32px, rgba(80,100,120,0.08) 33px);
+  }
+
+  .pnw-trail {
+    position: absolute;
+    top: 40px;
+    left: 60px;
+    width: 140px;
+    height: 100px;
+    border: 3px solid #4a7a6a;
+    border-bottom: none;
+    border-radius: 60% 60% 0 0;
+    opacity: 0.8;
+  }
+
+  .pnw-trail-2 {
+    position: absolute;
+    top: 130px;
+    left: 80px;
+    width: 80px;
+    height: 60px;
+    border: 2.5px solid #4a7a6a;
+    border-top: none;
+    border-radius: 0 0 50% 50%;
+    opacity: 0.5;
+  }
+
+  .pnw-dot {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #3d6b80;
+    border-radius: 50%;
+    border: 2.5px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    top: 128px;
+    left: 190px;
+  }
+
+  .pnw-dot::after {
+    content: '';
+    position: absolute;
+    width: 26px;
+    height: 26px;
+    background: rgba(61,107,128,0.18);
+    border-radius: 50%;
+    top: -9px;
+    left: -9px;
+  }
+
+  .pnw-bottom-sheet {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 260px;
+    background: #f0ede9;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 16px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.10);
+  }
+
+  .pnw-pill {
+    width: 36px;
+    height: 4px;
+    background: #c4c0b8;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .pnw-stat-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .pnw-stat-card {
+    flex: 1;
+    background: #e6e2dc;
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .pnw-stat-val { font-size: 16px; font-weight: 700; color: #2a3038; font-variant-numeric: tabular-nums; }
+  .pnw-stat-label { font-size: 10px; color: #7a8088; margin-top: 2px; font-weight: 500; }
+
+  .pnw-record-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #3d6b80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(61,107,128,0.4);
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+
+  .pnw-record-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 3px solid white;
+    position: relative;
+  }
+
+  .pnw-record-icon::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .pnw-quick-seeds {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .pnw-seed-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    border: 2px solid rgba(255,255,255,0.7);
+  }
+
+  .pnw-top-btns {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .pnw-glass-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(240,237,233,0.88);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+
+  /* ── DIRECTION 3: TRAIL WARMTH ── */
+
+  .tw-bg { background: #f5efe6; }
+
+  .tw-map {
+    width: 100%;
+    height: 340px;
+    background: linear-gradient(155deg, #d4c8a8 0%, #c8b890 30%, #c0b080 60%, #ccc0a0 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tw-map::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 30px, rgba(100,80,40,0.10) 30px, rgba(100,80,40,0.10) 31px),
+      repeating-linear-gradient(90deg, transparent, transparent 30px, rgba(100,80,40,0.10) 30px, rgba(100,80,40,0.10) 31px);
+  }
+
+  .tw-ridge {
+    position: absolute;
+    top: 20px;
+    left: -20px;
+    width: 200px;
+    height: 80px;
+    border-top: 2px solid rgba(100,80,40,0.25);
+    border-radius: 50%;
+  }
+  .tw-ridge-2 {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    width: 160px;
+    height: 60px;
+    border-top: 1.5px solid rgba(100,80,40,0.18);
+    border-radius: 50%;
+  }
+
+  .tw-trail {
+    position: absolute;
+    top: 70px;
+    left: 50px;
+    width: 160px;
+    height: 130px;
+    border-right: 3px solid #a05a30;
+    border-bottom: 3px solid #a05a30;
+    border-radius: 0 30% 40% 0;
+    opacity: 0.7;
+  }
+
+  .tw-dot {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #7a5230;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    top: 110px;
+    left: 156px;
+  }
+
+  .tw-dot::after {
+    content: '';
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    background: rgba(122,82,48,0.18);
+    border-radius: 50%;
+    top: -10px;
+    left: -10px;
+  }
+
+  .tw-bottom-sheet {
+    position: absolute;
+    bottom: 0;
+    left: 0; right: 0;
+    height: 260px;
+    background: #f5efe6;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 16px 16px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.12);
+  }
+
+  .tw-pill {
+    width: 36px;
+    height: 4px;
+    background: #d4c4a8;
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .tw-stat-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .tw-stat-card {
+    flex: 1;
+    background: #ece4d4;
+    border-radius: 12px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+
+  .tw-stat-val { font-size: 16px; font-weight: 700; color: #2e2218; font-variant-numeric: tabular-nums; }
+  .tw-stat-label { font-size: 10px; color: #8a7860; margin-top: 2px; font-weight: 500; }
+
+  .tw-record-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #c46030, #a04820);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 16px rgba(160,72,32,0.45);
+    flex-shrink: 0;
+    margin: 0 auto;
+  }
+
+  .tw-record-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 3px solid white;
+    position: relative;
+  }
+
+  .tw-record-icon::after {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .tw-quick-seeds {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .tw-seed-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    border: 2px solid rgba(255,255,255,0.65);
+  }
+
+  .tw-top-btns {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .tw-glass-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(245,239,230,0.88);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.14);
+  }
+
+  /* ── TRIP SUMMARY CARDS ── */
+
+  .card-row {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .trip-card {
+    width: 240px;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  }
+
+  .trip-card-map {
+    height: 120px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .trip-card-body {
+    padding: 14px;
+  }
+
+  .trip-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .trip-card-date {
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 12px;
+  }
+
+  .trip-card-stats {
+    display: flex;
+    gap: 0;
+  }
+
+  .trip-card-stat {
+    flex: 1;
+    text-align: center;
+  }
+
+  .trip-card-stat + .trip-card-stat {
+    border-left: 1px solid;
+  }
+
+  .trip-card-stat-val { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .trip-card-stat-label { font-size: 9px; font-weight: 500; margin-top: 2px; }
+
+  /* Typography specimen */
+  .type-specimen {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  .type-box {
+    width: 200px;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 48px 0;
+  }
+
+  .section-label {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 24px;
+  }
+
+  /* Seed detail sheet mockup */
+  .seed-sheet {
+    width: 280px;
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  }
+
+  .seed-sheet-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .seed-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .seed-title { font-size: 15px; font-weight: 700; }
+  .seed-type { font-size: 11px; font-weight: 600; }
+
+  .seed-edit-btn {
+    margin-left: auto;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .seed-notes {
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+
+  .seed-detail-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 6px 0;
+    border-bottom: 1px solid;
+  }
+
+  .seed-detail-row:last-of-type { border-bottom: none; }
+
+  .seed-delete-btn {
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 12px;
+  }
+
+  /* Scrollable snap */
+  .direction-number {
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    text-align: center;
+    line-height: 28px;
+    font-size: 13px;
+    font-weight: 700;
+    margin-right: 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>🌱 Sapling</h1>
+<p class="subtitle">Three brand directions — pick the one that feels right</p>
+
+<!-- ══════════════════════════════════════════════════════════
+     DIRECTION 1: FIELD JOURNAL
+══════════════════════════════════════════════════════════ -->
+
+<div class="direction-section">
+  <div class="direction-header">
+    <h2><span class="direction-number">1</span>Field Journal</h2>
+    <p>Warm parchment, forest ink, amber detail. Like a weathered Moleskine meets a hand-drawn topo map. The most tactile and personal of the three.</p>
+  </div>
+
+  <div class="section-label">Color Palette</div>
+  <div class="palette-row">
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#4a6741;"></div>
+      <div class="swatch-name">Forest</div>
+      <div class="swatch-hex">#4a6741</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#c4863a;"></div>
+      <div class="swatch-name">Amber</div>
+      <div class="swatch-hex">#c4863a</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#7a6840;"></div>
+      <div class="swatch-name">Bark</div>
+      <div class="swatch-hex">#7a6840</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#f4f0e8; border: 1px solid #d4cdb8;"></div>
+      <div class="swatch-name">Parchment</div>
+      <div class="swatch-hex">#f4f0e8</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#ede9e0;"></div>
+      <div class="swatch-name">Stone</div>
+      <div class="swatch-hex">#ede9e0</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#2d2a22;"></div>
+      <div class="swatch-name">Ink</div>
+      <div class="swatch-hex">#2d2a22</div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:32px;">Screen Mockups</div>
+  <div class="phone-row">
+
+    <!-- Main map screen -->
+    <div>
+      <div class="phone fj-bg">
+        <!-- Map -->
+        <div class="fj-map">
+          <div class="fj-contour"></div>
+          <div class="fj-contour"></div>
+          <div class="fj-contour"></div>
+          <div class="fj-trail"></div>
+          <div class="fj-location-dot"></div>
+          <!-- Seed pins -->
+          <div class="fj-pin" style="background:#4a6741;top:85px;left:90px;">🌿</div>
+          <div class="fj-pin" style="background:#c4863a;top:145px;left:70px;">💧</div>
+          <!-- Top buttons -->
+          <div class="fj-top-btns">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div class="fj-glass-btn">☰</div>
+              <div class="fj-glass-btn">📍</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+              <div class="fj-glass-btn">⬇</div>
+              <div class="fj-glass-btn">◎</div>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom sheet -->
+        <div class="fj-bottom-sheet">
+          <div class="fj-pill"></div>
+          <div class="fj-stat-row">
+            <div class="fj-stat-card">
+              <div class="fj-stat-val">3.2 km</div>
+              <div class="fj-stat-label">Distance</div>
+            </div>
+            <div class="fj-stat-card">
+              <div class="fj-stat-val">42 m</div>
+              <div class="fj-stat-label">Gain</div>
+            </div>
+            <div class="fj-stat-card">
+              <div class="fj-stat-val">24:18</div>
+              <div class="fj-stat-label">Time</div>
+            </div>
+          </div>
+          <!-- Quick seed bar -->
+          <div class="fj-quick-seeds" style="margin-bottom:12px;">
+            <div class="fj-seed-btn" style="background:#4a6741;">🌿</div>
+            <div class="fj-seed-btn" style="background:#4a7088;">💧</div>
+            <div class="fj-seed-btn" style="background:#8a5a30;">🍄</div>
+            <div class="fj-seed-btn" style="background:#c4863a;">⚠️</div>
+            <div class="fj-seed-btn" style="background:#6a5a7a;">🦌</div>
+          </div>
+          <!-- Record button -->
+          <div class="fj-record-btn">
+            <div class="fj-record-icon"></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Map · Recording</div>
+    </div>
+
+    <!-- Seed detail -->
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;">
+      <div class="seed-sheet" style="background:#f4f0e8;">
+        <div class="seed-sheet-header">
+          <div class="seed-icon" style="background:#4a6741;">🌿</div>
+          <div>
+            <div class="seed-title" style="color:#2d2a22;">Wild Garlic Patch</div>
+            <div class="seed-type" style="color:#4a6741;">Forage</div>
+          </div>
+          <div class="seed-edit-btn" style="background:rgba(74,103,65,0.12);color:#4a6741;">
+            ✏ Edit
+          </div>
+        </div>
+        <div class="seed-notes" style="color:#6a6050;">Dense patch near the creek crossing. Come back in April when fully leafed out.</div>
+        <div class="seed-detail-row" style="color:#8a8070;border-color:#ddd8cc;">
+          <span>📍</span>
+          <span style="color:#6a6050;">Location</span>
+          <span style="margin-left:auto;font-family:monospace;font-size:11px;">47.6142, -122.347</span>
+        </div>
+        <div class="seed-detail-row" style="color:#8a8070;border-color:#ddd8cc;">
+          <span>📅</span>
+          <span style="color:#6a6050;">Created</span>
+          <span style="margin-left:auto;">3 days ago</span>
+        </div>
+        <div class="seed-delete-btn" style="background:rgba(180,60,40,0.08);color:#b43c28;">🗑 Delete Seed</div>
+      </div>
+      <div class="phone-label">Seed Detail</div>
+    </div>
+
+    <!-- Trip summary -->
+    <div>
+      <div class="trip-card" style="background:#f4f0e8;">
+        <div class="trip-card-map" style="background:linear-gradient(160deg,#d4cdb8,#c8c0a8);">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a6840;opacity:0.6;">trail map preview</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#f4f0e8);"></div>
+        </div>
+        <div class="trip-card-body">
+          <div class="trip-card-title" style="color:#2d2a22;">Morning Ridge Loop</div>
+          <div class="trip-card-date" style="color:#8a8070;">Today · April 19</div>
+          <div class="trip-card-stats">
+            <div class="trip-card-stat" style="border-color:#ddd8cc;">
+              <div class="trip-card-stat-val" style="color:#2d2a22;">8.4 km</div>
+              <div class="trip-card-stat-label" style="color:#8a8070;">Distance</div>
+            </div>
+            <div class="trip-card-stat" style="border-color:#ddd8cc;">
+              <div class="trip-card-stat-val" style="color:#2d2a22;">1:42:08</div>
+              <div class="trip-card-stat-label" style="color:#8a8070;">Time</div>
+            </div>
+            <div class="trip-card-stat" style="border-color:#ddd8cc;">
+              <div class="trip-card-stat-val" style="color:#2d2a22;">312 m</div>
+              <div class="trip-card-stat-label" style="color:#8a8070;">Gain</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label" style="margin-top:8px;">Trip Card</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     DIRECTION 2: PACIFIC NORTHWEST MINIMAL
+══════════════════════════════════════════════════════════ -->
+
+<div class="direction-section">
+  <div class="direction-header">
+    <h2><span class="direction-number">2</span>Pacific Northwest Minimal</h2>
+    <p>Cool mist and slate tones, moss green as the hero color, slate blue as secondary. Nearly monochromatic — clean as a topo line, precise as a compass bearing.</p>
+  </div>
+
+  <div class="section-label">Color Palette</div>
+  <div class="palette-row">
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#4a7a6a;"></div>
+      <div class="swatch-name">Moss</div>
+      <div class="swatch-hex">#4a7a6a</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#3d6b80;"></div>
+      <div class="swatch-name">Glacier</div>
+      <div class="swatch-hex">#3d6b80</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#6a8870;"></div>
+      <div class="swatch-name">Fern</div>
+      <div class="swatch-hex">#6a8870</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#f0ede9; border: 1px solid #c8c4bc;"></div>
+      <div class="swatch-name">Mist</div>
+      <div class="swatch-hex">#f0ede9</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#e6e2dc;"></div>
+      <div class="swatch-name">Cloud</div>
+      <div class="swatch-hex">#e6e2dc</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#2a3038;"></div>
+      <div class="swatch-name">Slate</div>
+      <div class="swatch-hex">#2a3038</div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:32px;">Screen Mockups</div>
+  <div class="phone-row">
+
+    <div>
+      <div class="phone pnw-bg">
+        <div class="pnw-map">
+          <div class="pnw-trail"></div>
+          <div class="pnw-trail-2"></div>
+          <div class="pnw-dot"></div>
+          <div class="fj-pin" style="background:#4a7a6a;top:55px;left:80px;">🌿</div>
+          <div class="fj-pin" style="background:#3d6b80;top:148px;left:55px;">💧</div>
+          <div class="pnw-top-btns">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div class="pnw-glass-btn">☰</div>
+              <div class="pnw-glass-btn">📍</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+              <div class="pnw-glass-btn">⬇</div>
+              <div class="pnw-glass-btn">◎</div>
+            </div>
+          </div>
+        </div>
+        <div class="pnw-bottom-sheet">
+          <div class="pnw-pill"></div>
+          <div class="pnw-stat-row">
+            <div class="pnw-stat-card">
+              <div class="pnw-stat-val">3.2 km</div>
+              <div class="pnw-stat-label">Distance</div>
+            </div>
+            <div class="pnw-stat-card">
+              <div class="pnw-stat-val">42 m</div>
+              <div class="pnw-stat-label">Gain</div>
+            </div>
+            <div class="pnw-stat-card">
+              <div class="pnw-stat-val">24:18</div>
+              <div class="pnw-stat-label">Time</div>
+            </div>
+          </div>
+          <div class="pnw-quick-seeds" style="margin-bottom:12px;">
+            <div class="pnw-seed-btn" style="background:#4a7a6a;">🌿</div>
+            <div class="pnw-seed-btn" style="background:#3d6b80;">💧</div>
+            <div class="pnw-seed-btn" style="background:#5a6a58;">🍄</div>
+            <div class="pnw-seed-btn" style="background:#7a6a48;">⚠️</div>
+            <div class="pnw-seed-btn" style="background:#5a5070;">🦌</div>
+          </div>
+          <div class="pnw-record-btn">
+            <div class="pnw-record-icon"></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Map · Recording</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;">
+      <div class="seed-sheet" style="background:#f0ede9;">
+        <div class="seed-sheet-header">
+          <div class="seed-icon" style="background:#4a7a6a;">🌿</div>
+          <div>
+            <div class="seed-title" style="color:#2a3038;">Wild Garlic Patch</div>
+            <div class="seed-type" style="color:#4a7a6a;">Forage</div>
+          </div>
+          <div class="seed-edit-btn" style="background:rgba(74,122,106,0.12);color:#4a7a6a;">
+            ✏ Edit
+          </div>
+        </div>
+        <div class="seed-notes" style="color:#586068;">Dense patch near the creek crossing. Come back in April when fully leafed out.</div>
+        <div class="seed-detail-row" style="color:#7a8088;border-color:#d8d4ce;">
+          <span>📍</span>
+          <span style="color:#586068;">Location</span>
+          <span style="margin-left:auto;font-family:monospace;font-size:11px;">47.6142, -122.347</span>
+        </div>
+        <div class="seed-detail-row" style="color:#7a8088;border-color:#d8d4ce;">
+          <span>📅</span>
+          <span style="color:#586068;">Created</span>
+          <span style="margin-left:auto;">3 days ago</span>
+        </div>
+        <div class="seed-delete-btn" style="background:rgba(160,50,40,0.08);color:#a03228;">🗑 Delete Seed</div>
+      </div>
+      <div class="phone-label">Seed Detail</div>
+    </div>
+
+    <div>
+      <div class="trip-card" style="background:#f0ede9;">
+        <div class="trip-card-map" style="background:linear-gradient(160deg,#c8d4da,#b8cad2);">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#5a7080;opacity:0.6;">trail map preview</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#f0ede9);"></div>
+        </div>
+        <div class="trip-card-body">
+          <div class="trip-card-title" style="color:#2a3038;">Morning Ridge Loop</div>
+          <div class="trip-card-date" style="color:#7a8088;">Today · April 19</div>
+          <div class="trip-card-stats">
+            <div class="trip-card-stat" style="border-color:#d8d4ce;">
+              <div class="trip-card-stat-val" style="color:#2a3038;">8.4 km</div>
+              <div class="trip-card-stat-label" style="color:#7a8088;">Distance</div>
+            </div>
+            <div class="trip-card-stat" style="border-color:#d8d4ce;">
+              <div class="trip-card-stat-val" style="color:#2a3038;">1:42:08</div>
+              <div class="trip-card-stat-label" style="color:#7a8088;">Time</div>
+            </div>
+            <div class="trip-card-stat" style="border-color:#d8d4ce;">
+              <div class="trip-card-stat-val" style="color:#2a3038;">312 m</div>
+              <div class="trip-card-stat-label" style="color:#7a8088;">Gain</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label" style="margin-top:8px;">Trip Card</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     DIRECTION 3: TRAIL WARMTH
+══════════════════════════════════════════════════════════ -->
+
+<div class="direction-section">
+  <div class="direction-header">
+    <h2><span class="direction-number">3</span>Trail Warmth</h2>
+    <p>Terracotta and sage — the color of late afternoon light through dry grass. A little more adventurous and bold. Like a National Park poster brought to life.</p>
+  </div>
+
+  <div class="section-label">Color Palette</div>
+  <div class="palette-row">
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#6b8c5a;"></div>
+      <div class="swatch-name">Sage</div>
+      <div class="swatch-hex">#6b8c5a</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#c46030;"></div>
+      <div class="swatch-name">Ember</div>
+      <div class="swatch-hex">#c46030</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#e8b84a;"></div>
+      <div class="swatch-name">Goldenrod</div>
+      <div class="swatch-hex">#e8b84a</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#f5efe6; border: 1px solid #d8c8b0;"></div>
+      <div class="swatch-name">Cream</div>
+      <div class="swatch-hex">#f5efe6</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#ece4d4;"></div>
+      <div class="swatch-name">Sand</div>
+      <div class="swatch-hex">#ece4d4</div>
+    </div>
+    <div class="swatch">
+      <div class="swatch-circle" style="background:#2e2218;"></div>
+      <div class="swatch-name">Espresso</div>
+      <div class="swatch-hex">#2e2218</div>
+    </div>
+  </div>
+
+  <div class="section-label" style="margin-top:32px;">Screen Mockups</div>
+  <div class="phone-row">
+
+    <div>
+      <div class="phone tw-bg">
+        <div class="tw-map">
+          <div class="tw-ridge"></div>
+          <div class="tw-ridge-2"></div>
+          <div class="tw-trail"></div>
+          <div class="tw-dot"></div>
+          <div class="fj-pin" style="background:#6b8c5a;top:90px;left:65px;">🌿</div>
+          <div class="fj-pin" style="background:#c46030;top:155px;left:50px;">⚠️</div>
+          <div class="tw-top-btns">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div class="tw-glass-btn">☰</div>
+              <div class="tw-glass-btn">📍</div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+              <div class="tw-glass-btn">⬇</div>
+              <div class="tw-glass-btn">◎</div>
+            </div>
+          </div>
+        </div>
+        <div class="tw-bottom-sheet">
+          <div class="tw-pill"></div>
+          <div class="tw-stat-row">
+            <div class="tw-stat-card">
+              <div class="tw-stat-val">3.2 km</div>
+              <div class="tw-stat-label">Distance</div>
+            </div>
+            <div class="tw-stat-card">
+              <div class="tw-stat-val">42 m</div>
+              <div class="tw-stat-label">Gain</div>
+            </div>
+            <div class="tw-stat-card">
+              <div class="tw-stat-val">24:18</div>
+              <div class="tw-stat-label">Time</div>
+            </div>
+          </div>
+          <div class="tw-quick-seeds" style="margin-bottom:12px;">
+            <div class="tw-seed-btn" style="background:#6b8c5a;">🌿</div>
+            <div class="tw-seed-btn" style="background:#4a7a7a;">💧</div>
+            <div class="tw-seed-btn" style="background:#8a6040;">🍄</div>
+            <div class="tw-seed-btn" style="background:#c46030;">⚠️</div>
+            <div class="tw-seed-btn" style="background:#7a6880;">🦌</div>
+          </div>
+          <div class="tw-record-btn">
+            <div class="tw-record-icon"></div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label">Map · Recording</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:12px;">
+      <div class="seed-sheet" style="background:#f5efe6;">
+        <div class="seed-sheet-header">
+          <div class="seed-icon" style="background:#6b8c5a;">🌿</div>
+          <div>
+            <div class="seed-title" style="color:#2e2218;">Wild Garlic Patch</div>
+            <div class="seed-type" style="color:#6b8c5a;">Forage</div>
+          </div>
+          <div class="seed-edit-btn" style="background:rgba(107,140,90,0.12);color:#6b8c5a;">
+            ✏ Edit
+          </div>
+        </div>
+        <div class="seed-notes" style="color:#6a5e50;">Dense patch near the creek crossing. Come back in April when fully leafed out.</div>
+        <div class="seed-detail-row" style="color:#8a7860;border-color:#ddd0b8;">
+          <span>📍</span>
+          <span style="color:#6a5e50;">Location</span>
+          <span style="margin-left:auto;font-family:monospace;font-size:11px;">47.6142, -122.347</span>
+        </div>
+        <div class="seed-detail-row" style="color:#8a7860;border-color:#ddd0b8;">
+          <span>📅</span>
+          <span style="color:#6a5e50;">Created</span>
+          <span style="margin-left:auto;">3 days ago</span>
+        </div>
+        <div class="seed-delete-btn" style="background:rgba(180,60,40,0.08);color:#b43c28;">🗑 Delete Seed</div>
+      </div>
+      <div class="phone-label">Seed Detail</div>
+    </div>
+
+    <div>
+      <div class="trip-card" style="background:#f5efe6;">
+        <div class="trip-card-map" style="background:linear-gradient(160deg,#d4c8a8,#c8b890);">
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#8a7040;opacity:0.6;">trail map preview</div>
+          <div style="position:absolute;bottom:0;left:0;right:0;height:40px;background:linear-gradient(transparent,#f5efe6);"></div>
+        </div>
+        <div class="trip-card-body">
+          <div class="trip-card-title" style="color:#2e2218;">Morning Ridge Loop</div>
+          <div class="trip-card-date" style="color:#8a7860;">Today · April 19</div>
+          <div class="trip-card-stats">
+            <div class="trip-card-stat" style="border-color:#ddd0b8;">
+              <div class="trip-card-stat-val" style="color:#2e2218;">8.4 km</div>
+              <div class="trip-card-stat-label" style="color:#8a7860;">Distance</div>
+            </div>
+            <div class="trip-card-stat" style="border-color:#ddd0b8;">
+              <div class="trip-card-stat-val" style="color:#2e2218;">1:42:08</div>
+              <div class="trip-card-stat-label" style="color:#7a8088;">Time</div>
+            </div>
+            <div class="trip-card-stat" style="border-color:#ddd0b8;">
+              <div class="trip-card-stat-val" style="color:#2e2218;">312 m</div>
+              <div class="trip-card-stat-label" style="color:#8a7860;">Gain</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="phone-label" style="margin-top:8px;">Trip Card</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════════════════════════
+     DESIGN SYSTEM NOTES
+══════════════════════════════════════════════════════════ -->
+
+<div class="direction-section">
+  <div class="direction-header">
+    <h2>Design System · Shared Principles</h2>
+    <p>These apply to whichever palette you pick — they define the personality of the app regardless of color.</p>
+  </div>
+
+  <div class="type-specimen">
+
+    <div class="type-box" style="background:#f4f0e8;">
+      <div style="color:#8a8070;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Typography</div>
+      <div style="color:#2d2a22;font-size:22px;font-weight:800;letter-spacing:-0.5px;margin-bottom:4px;">Morning Loop</div>
+      <div style="color:#4a6741;font-size:13px;font-weight:600;margin-bottom:12px;">8.4 km · 1:42</div>
+      <div style="color:#6a6050;font-size:12px;line-height:1.6;">SF Pro Rounded throughout — keeps the friendly outdoor feel without going childish. Heavy weights for stats, medium for labels.</div>
+    </div>
+
+    <div class="type-box" style="background:#f4f0e8;">
+      <div style="color:#8a8070;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Shape Language</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="background:#4a6741;color:white;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;">Capsule</div>
+        <div style="background:#ede9e0;color:#2d2a22;padding:6px 10px;border-radius:12px;font-size:12px;font-weight:600;">Card</div>
+        <div style="width:36px;height:36px;background:#4a6741;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;">✓</div>
+      </div>
+      <div style="color:#6a6050;font-size:12px;line-height:1.6;">Capsule buttons for actions. Generous corner radii (12–20px) on cards. Circular icons and dots. No sharp rectangles.</div>
+    </div>
+
+    <div class="type-box" style="background:#f4f0e8;">
+      <div style="color:#8a8070;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Material / Depth</div>
+      <div style="background:rgba(244,240,232,0.7);backdrop-filter:blur(8px);border-radius:12px;padding:10px;margin-bottom:12px;border:1px solid rgba(255,255,255,0.6);">
+        <div style="color:#2d2a22;font-size:12px;font-weight:600;">Frosted glass overlay</div>
+        <div style="color:#8a8070;font-size:11px;">.thinMaterial / .regularMaterial</div>
+      </div>
+      <div style="color:#6a6050;font-size:12px;line-height:1.6;">System materials for overlays — they adapt to light/dark and look native. Avoid custom semi-transparent flat colors.</div>
+    </div>
+
+    <div class="type-box" style="background:#f4f0e8;">
+      <div style="color:#8a8070;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Map Style</div>
+      <div style="color:#6a6050;font-size:12px;line-height:1.6;margin-bottom:8px;">Whichever tile style complements the chosen palette:</div>
+      <div style="color:#2d2a22;font-size:12px;font-weight:600;margin-bottom:2px;">Liberty (current)</div>
+      <div style="color:#8a8070;font-size:11px;margin-bottom:8px;">Warm, detailed, hand-drawn feel</div>
+      <div style="color:#2d2a22;font-size:12px;font-weight:600;margin-bottom:2px;">Positron / Bright</div>
+      <div style="color:#8a8070;font-size:11px;">Minimal, high-contrast, clean</div>
+    </div>
+
+  </div>
+
+  <div style="text-align:center;font-size:13px;color:#555;max-width:560px;margin:0 auto;line-height:1.7;">
+    <strong style="color:#888;">Recommendation:</strong> Direction 1 (Field Journal) feels most distinctly <em>Sapling</em> — warm, personal, and tactile. Direction 2 is the safer, more modern choice. Direction 3 is bolder and more expressive. The structure of all three is the same — only the palette needs to be decided before any code changes.
+  </div>
+</div>
+
+</body>
+</html>

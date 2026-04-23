@@ -13,25 +13,22 @@ struct StopRecordingSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             Capsule()
-                .fill(.secondary.opacity(0.4))
+                .fill(SaplingColors.bark.opacity(0.35))
                 .frame(width: 36, height: 5)
-                .padding(.top, 10)
+                .padding(.top, 12)
                 .padding(.bottom, 20)
 
             Text("End Recording?")
                 .font(.title3.weight(.bold))
+                .foregroundStyle(SaplingColors.ink)
                 .padding(.bottom, 20)
 
             // Live stats
-            HStack(spacing: 0) {
+            HStack(spacing: 8) {
                 StatPill(value: formatDistance(distanceMeters), label: "Distance")
-                Divider().frame(height: 36)
                 StatPill(value: formatElevation(elevationGain), label: "Gain")
-                Divider().frame(height: 36)
                 StatPill(value: formatDuration(elapsedMs), label: "Time")
             }
-            .padding(.vertical, 14)
-            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
             .padding(.horizontal, 20)
             .padding(.bottom, 28)
 
@@ -51,8 +48,8 @@ struct StopRecordingSheet: View {
                         .font(.headline.weight(.semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
-                        .foregroundStyle(.primary)
+                        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
+                        .foregroundStyle(SaplingColors.ink)
                 }
 
                 Button(role: .destructive) {
@@ -74,8 +71,8 @@ struct StopRecordingSheet: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 36)
         }
-        .background(.regularMaterial)
-        .presentationDetents([.height(340)])
+        .background(SaplingColors.parchment)
+        .presentationDetents([.height(360)])
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled(true)
     }
@@ -86,13 +83,16 @@ private struct StatPill: View {
     let label: String
 
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 4) {
             Text(value)
                 .font(.title3.monospacedDigit().weight(.semibold))
+                .foregroundStyle(SaplingColors.ink)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SaplingColors.bark)
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
+        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
     }
 }

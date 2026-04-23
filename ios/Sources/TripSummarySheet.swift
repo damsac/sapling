@@ -10,17 +10,28 @@ struct TripSummarySheet: View {
     let onDismiss: () -> Void
     let onRename: (String) -> Void
     let onUpdateNotes: (String?) -> Void
+    let onExportGpx: () -> URL?
 
     @State private var isEditing = false
     @State private var editName = ""
     @State private var editNotes = ""
+    @State private var gpxURL: URL? = nil
+    @State private var showShareSheet = false
+
+    private var parsedDate: Date {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: summary.createdAt) { return date }
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: summary.createdAt) ?? Date()
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             Capsule()
-                .fill(.secondary.opacity(0.4))
+                .fill(SaplingColors.bark.opacity(0.35))
                 .frame(width: 36, height: 5)
-                .padding(.top, 10)
+                .padding(.top, 12)
                 .padding(.bottom, 16)
 
             ScrollView {
@@ -37,27 +48,27 @@ struct TripSummarySheet: View {
                     VStack(spacing: 12) {
                         if isEditing {
                             VStack(spacing: 12) {
-                                // Name field
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Trip Name")
                                         .font(.caption.weight(.medium))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(SaplingColors.bark)
                                     TextField("Trip name", text: $editName)
                                         .font(.body.weight(.semibold))
+                                        .foregroundStyle(SaplingColors.ink)
                                         .padding(10)
-                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 10))
                                 }
 
-                                // Notes field
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Notes")
                                         .font(.caption.weight(.medium))
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(SaplingColors.bark)
                                     TextField("Add notes about this trip…", text: $editNotes, axis: .vertical)
                                         .font(.body)
+                                        .foregroundStyle(SaplingColors.ink)
                                         .lineLimit(3...8)
                                         .padding(10)
-                                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 10))
                                 }
 
                                 HStack(spacing: 12) {
@@ -65,10 +76,10 @@ struct TripSummarySheet: View {
                                         isEditing = false
                                     }
                                     .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(SaplingColors.bark)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 12)
-                                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
 
                                     Button("Save") {
                                         let name = editName.trimmingCharacters(in: .whitespaces)
@@ -85,11 +96,11 @@ struct TripSummarySheet: View {
                                 }
                             }
                         } else {
-                            // Display mode
                             VStack(spacing: 6) {
                                 HStack(alignment: .center, spacing: 10) {
                                     Text(summary.name)
                                         .font(.title2.weight(.bold))
+                                        .foregroundStyle(SaplingColors.ink)
                                         .multilineTextAlignment(.center)
                                         .frame(maxWidth: .infinity)
 
@@ -105,16 +116,27 @@ struct TripSummarySheet: View {
                                             .padding(.vertical, 6)
                                             .background(SaplingColors.brand.opacity(0.12), in: Capsule())
                                     }
+
+                                    Button {
+                                        gpxURL = onExportGpx()
+                                        if gpxURL != nil { showShareSheet = true }
+                                    } label: {
+                                        Image(systemName: "square.and.arrow.up")
+                                            .font(.caption.weight(.semibold))
+                                            .foregroundStyle(SaplingColors.brand)
+                                            .padding(8)
+                                            .background(SaplingColors.brand.opacity(0.12), in: Circle())
+                                    }
                                 }
 
-                                Text(Date(), format: .dateTime.month(.wide).day().year())
+                                Text(parsedDate, format: .dateTime.month(.wide).day().year())
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(SaplingColors.bark)
 
                                 if let notes = summary.notes, !notes.isEmpty {
                                     Text(notes)
                                         .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(SaplingColors.bark)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                         .padding(.top, 2)
                                 }
@@ -124,7 +146,6 @@ struct TripSummarySheet: View {
                     .padding(.horizontal, 16)
 
                     if !isEditing {
-                        // Stats grid
                         StatsGrid(summary: summary)
                             .padding(.horizontal, 16)
 
@@ -134,7 +155,7 @@ struct TripSummarySheet: View {
                                     .foregroundStyle(SaplingColors.brand)
                                 Text("\(summary.seedCount) seed\(summary.seedCount == 1 ? "" : "s") dropped")
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(SaplingColors.bark)
                             }
                             .padding(.horizontal, 16)
                         }
@@ -142,9 +163,10 @@ struct TripSummarySheet: View {
                         Button(action: onDismiss) {
                             Text("Done")
                                 .font(.headline.weight(.semibold))
+                                .foregroundStyle(SaplingColors.ink)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 14)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+                                .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
                         }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 24)
@@ -152,11 +174,26 @@ struct TripSummarySheet: View {
                 }
             }
         }
-        .background(.regularMaterial)
+        .background(SaplingColors.parchment)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled(false)
+        .sheet(isPresented: $showShareSheet) {
+            if let url = gpxURL {
+                ShareSheet(url: url)
+            }
+        }
     }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Stats Grid
@@ -171,7 +208,7 @@ private struct StatsGrid: View {
             GridItem(.flexible()),
         ]
 
-        LazyVGrid(columns: columns, spacing: 12) {
+        LazyVGrid(columns: columns, spacing: 10) {
             StatCell(value: formatDistance(summary.distanceM), label: "Distance")
             StatCell(value: formatDuration(summary.durationMs), label: "Time")
             StatCell(value: formatElevation(summary.elevationGain), label: "Elev +")
@@ -181,7 +218,7 @@ private struct StatsGrid: View {
             }
         }
         .padding(16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
     }
 }
 
@@ -194,10 +231,14 @@ private struct StatCell: View {
             Text(value)
                 .font(.title3.monospacedDigit())
                 .fontWeight(.semibold)
+                .foregroundStyle(SaplingColors.ink)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(SaplingColors.bark)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -238,15 +279,16 @@ private struct SummaryMapView: View {
 // MARK: - Formatting Helpers
 
 func formatDistance(_ meters: Double) -> String {
-    if meters < 1000 {
-        return String(format: "%.0f m", meters)
+    let miles = meters / 1609.344
+    if miles < 0.1 {
+        return String(format: "%.0f ft", meters * 3.28084)
     } else {
-        return String(format: "%.1f km", meters / 1000)
+        return String(format: "%.2f mi", miles)
     }
 }
 
 func formatElevation(_ meters: Double) -> String {
-    String(format: "%.0f m", meters)
+    String(format: "%.0f ft", meters * 3.28084)
 }
 
 func formatDuration(_ ms: Int64) -> String {
@@ -262,9 +304,9 @@ func formatDuration(_ ms: Int64) -> String {
 }
 
 func formatPace(_ distanceM: Double, _ durationMs: Int64) -> String {
-    let km = distanceM / 1000
-    guard km > 0 else { return "--" }
+    let miles = distanceM / 1609.344
+    guard miles > 0 else { return "--" }
     let hours = Double(durationMs) / 1000 / 3600
-    let kmh = km / hours
-    return String(format: "%.1f km/h", kmh)
+    let mph = miles / hours
+    return String(format: "%.1f mph", mph)
 }

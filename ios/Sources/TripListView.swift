@@ -1,8 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TripListView: View {
     var viewModel: TripListViewModel
     @State private var tripToDelete: FfiTripSummary? = nil
+    @State private var gpxURL: URL? = nil
+    @State private var showShareSheet = false
+    @State private var showImportPicker = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -17,8 +21,25 @@ struct TripListView: View {
             .navigationTitle("Trips")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showImportPicker = true
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .fileImporter(
+                isPresented: $showImportPicker,
+                allowedContentTypes: [UTType(filenameExtension: "gpx") ?? .xml],
+                allowsMultipleSelection: false
+            ) { result in
+                if case .success(let urls) = result, let url = urls.first {
+                    let name = url.deletingPathExtension().lastPathComponent
+                    viewModel.importGpx(fileURL: url, name: name.isEmpty ? nil : name)
                 }
             }
         }
@@ -31,6 +52,15 @@ struct TripListView: View {
             ForEach(viewModel.trips, id: \.id) { trip in
                 NavigationLink(value: trip.id) {
                     TripRow(trip: trip)
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    Button {
+                        gpxURL = viewModel.exportGpx(trip: trip)
+                        if gpxURL != nil { showShareSheet = true }
+                    } label: {
+                        Label("Share", systemImage: "square.and.arrow.up")
+                    }
+                    .tint(.blue)
                 }
             }
             .onDelete { indexSet in
@@ -58,6 +88,11 @@ struct TripListView: View {
         } message: {
             if let trip = tripToDelete {
                 Text("Are you sure you want to delete \"\(trip.name)\"?")
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let url = gpxURL {
+                ShareSheet(url: url)
             }
         }
     }
@@ -88,25 +123,47 @@ private struct TripRow: View {
     let trip: FfiTripSummary
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(trip.name)
-                .font(.headline.weight(.semibold))
+        HStack(spacing: 12) {
+            // Brand accent bar
+            RoundedRectangle(cornerRadius: 2)
+                .fill(SaplingColors.brand)
+                .frame(width: 3)
+                .frame(minHeight: 44)
 
-            Text(formattedDate)
-                .font(.subheadline)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(trip.name)
+                    .font(.headline.weight(.semibold))
+
+                Text(formattedDate)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 6) {
+                    Label(formatDistance(trip.distanceM), systemImage: "arrow.left.and.right")
+                    Text("·")
+                    Label(formatDuration(trip.durationMs), systemImage: "clock")
+                    Text("·")
+                    Label("+\(formatElevation(trip.elevationGain))", systemImage: "arrow.up")
+                }
+                .font(.caption2)
                 .foregroundStyle(.secondary)
+                .labelStyle(.titleOnly)
 
-            HStack(spacing: 8) {
-                Text(formatDistance(trip.distanceM))
-                Text("\u{00B7}")
-                Text(formatDuration(trip.durationMs))
-                Text("\u{00B7}")
-                Text("+\(formatElevation(trip.elevationGain))")
+                if trip.seedCount > 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: "leaf.fill")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.brand)
+                        Text("\(trip.seedCount) seed\(trip.seedCount == 1 ? "" : "s")")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.brand.opacity(0.8))
+                    }
+                }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+
+            Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     private var formattedDate: String {

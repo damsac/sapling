@@ -30,13 +30,14 @@ struct SeedQuickAdd: View {
 
                 Button("Cancel", action: onCancel)
                     .font(.subheadline)
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(SaplingColors.bark)
             }
             .padding(.horizontal)
 
             // Title field
             TextField("Name this seed", text: $title)
                 .font(.title3.weight(.semibold))
+                .foregroundStyle(SaplingColors.ink)
                 .textFieldStyle(.plain)
                 .padding(.horizontal)
                 .focused($titleFocused)
@@ -52,13 +53,14 @@ struct SeedQuickAdd: View {
                             Text("Add notes")
                         }
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(SaplingColors.bark)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
                     }
                 } else {
                     TextField("Notes (optional)", text: $notes, axis: .vertical)
                         .font(.subheadline)
+                        .foregroundStyle(SaplingColors.ink)
                         .textFieldStyle(.plain)
                         .lineLimit(3...6)
                         .padding(.horizontal)
@@ -72,7 +74,7 @@ struct SeedQuickAdd: View {
                 Text(formatCoordinate(coordinate))
                     .font(.caption.monospacedDigit())
             }
-            .foregroundStyle(.secondary)
+            .foregroundStyle(SaplingColors.bark)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal)
 
@@ -95,7 +97,7 @@ struct SeedQuickAdd: View {
             .padding(.horizontal)
         }
         .padding(.vertical, 20)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 20))
         .padding(.horizontal, 12)
         .onAppear {
             title = seedType.defaultTitle

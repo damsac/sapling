@@ -2,7 +2,7 @@ use rusqlite::Connection;
 use rusqlite_migration::{Migrations, M};
 
 use crate::error::SaplingError;
-use crate::models::{CreateSeedInput, Seed, SeedType, TrackPoint, TripSummary};
+use crate::models::{CreateSeedInput, Route, RouteWaypoint, Seed, SeedType, TrackPoint, TripSummary};
 
 /// SQLite-backed persistent store.
 pub struct Store {
@@ -107,6 +107,70 @@ impl Store {
                 );",
             ),
             M::up("ALTER TABLE trips ADD COLUMN notes TEXT;"),
+            // Safety migration: repairs DBs where user_version was set by an older binary
+            // whose migration 1 created trips (not seeds), causing seeds to be skipped.
+            M::up(
+                "CREATE TABLE IF NOT EXISTS seeds (
+                    id          TEXT PRIMARY KEY NOT NULL,
+                    seed_type   TEXT NOT NULL,
+                    title       TEXT NOT NULL,
+                    notes       TEXT,
+                    latitude    REAL NOT NULL,
+                    longitude   REAL NOT NULL,
+                    elevation   REAL,
+                    confidence  INTEGER NOT NULL DEFAULT 50,
+                    tags        TEXT NOT NULL DEFAULT '[]',
+                    device_id   TEXT,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL,
+                    deleted_at  TEXT
+                );
+
+                CREATE VIRTUAL TABLE IF NOT EXISTS seeds_fts USING fts5(
+                    title, notes, tags, content='seeds', content_rowid='rowid'
+                );
+
+                CREATE TRIGGER IF NOT EXISTS seeds_ai AFTER INSERT ON seeds BEGIN
+                    INSERT INTO seeds_fts(rowid, title, notes, tags)
+                    VALUES (new.rowid, new.title, new.notes, new.tags);
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS seeds_ad AFTER DELETE ON seeds BEGIN
+                    INSERT INTO seeds_fts(seeds_fts, rowid, title, notes, tags)
+                    VALUES ('delete', old.rowid, old.title, old.notes, old.tags);
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS seeds_au AFTER UPDATE ON seeds BEGIN
+                    INSERT INTO seeds_fts(seeds_fts, rowid, title, notes, tags)
+                    VALUES ('delete', old.rowid, old.title, old.notes, old.tags);
+                    INSERT INTO seeds_fts(rowid, title, notes, tags)
+                    VALUES (new.rowid, new.title, new.notes, new.tags);
+                END;",
+            ),
+            // Safety migration: repairs DBs where trip_seeds was named trip_gems by an older binary.
+            M::up(
+                "CREATE TABLE IF NOT EXISTS trip_seeds (
+                    trip_id     TEXT NOT NULL REFERENCES trips(id),
+                    seed_id     TEXT NOT NULL REFERENCES seeds(id),
+                    device_id   TEXT,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL,
+                    deleted_at  TEXT,
+                    PRIMARY KEY (trip_id, seed_id)
+                );",
+            ),
+            M::up(
+                "CREATE TABLE IF NOT EXISTS routes (
+                    id          TEXT PRIMARY KEY NOT NULL,
+                    name        TEXT NOT NULL,
+                    notes       TEXT,
+                    waypoints   TEXT NOT NULL DEFAULT '[]',
+                    distance_m  REAL NOT NULL DEFAULT 0,
+                    created_at  TEXT NOT NULL,
+                    updated_at  TEXT NOT NULL,
+                    deleted_at  TEXT
+                );",
+            ),
         ]);
 
         migrations
@@ -389,6 +453,79 @@ impl Store {
         Ok(())
     }
 
+    /// Create a trip from imported GPX track points, computing stats from the point data.
+    pub fn import_trip_from_gpx(
+        &self,
+        name: &str,
+        points: &[TrackPoint],
+    ) -> Result<TripSummary, SaplingError> {
+        let id = uuid::Uuid::now_v7().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+
+        // Compute stats from points
+        let mut distance_m = 0.0f64;
+        let mut elevation_gain = 0.0f64;
+        let mut elevation_loss = 0.0f64;
+        let mut prev: Option<&TrackPoint> = None;
+        for pt in points {
+            if let Some(p) = prev {
+                let d = crate::geo::haversine_distance(p.latitude, p.longitude, pt.latitude, pt.longitude);
+                distance_m += d;
+                if let (Some(e1), Some(e2)) = (p.elevation, pt.elevation) {
+                    let delta = e2 - e1;
+                    if delta > 0.0 { elevation_gain += delta; } else { elevation_loss += -delta; }
+                }
+            }
+            prev = Some(pt);
+        }
+        let duration_ms = if points.len() >= 2 {
+            points.last().map(|l| l.timestamp_ms).unwrap_or(0)
+                - points.first().map(|f| f.timestamp_ms).unwrap_or(0)
+        } else { 0 };
+
+        // Determine created_at from first point timestamp or now
+        let created_at = if let Some(first) = points.first() {
+            if first.timestamp_ms > 0 {
+                let secs = first.timestamp_ms / 1000;
+                time::OffsetDateTime::from_unix_timestamp(secs)
+                    .ok()
+                    .and_then(|dt| dt.format(&time::format_description::well_known::Rfc3339).ok())
+                    .unwrap_or_else(|| now.clone())
+            } else { now.clone() }
+        } else { now.clone() };
+
+        self.conn.execute(
+            "INSERT INTO trips (id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            rusqlite::params![id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at, now],
+        )?;
+
+        for pt in points {
+            self.conn.execute(
+                "INSERT INTO track_points (trip_id, latitude, longitude, elevation, h_accuracy, v_accuracy, speed, course, timestamp_ms, baro_relative_altitude, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                rusqlite::params![
+                    id, pt.latitude, pt.longitude, pt.elevation,
+                    pt.h_accuracy, pt.v_accuracy, pt.speed, pt.course,
+                    pt.timestamp_ms, pt.baro_relative_altitude, now, now,
+                ],
+            )?;
+        }
+
+        Ok(TripSummary {
+            id,
+            name: name.to_string(),
+            notes: None,
+            distance_m,
+            elevation_gain,
+            elevation_loss,
+            duration_ms,
+            seed_count: 0,
+            segment_count: 1,
+            created_at,
+        })
+    }
+
     pub fn delete_trip(&self, id: &str) -> Result<(), SaplingError> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(
@@ -406,7 +543,122 @@ impl Store {
         Ok(())
     }
 
+    // -- Routes --
+
+    pub fn create_route(&self, name: &str, waypoints: &[RouteWaypoint], distance_m: f64) -> Result<Route, SaplingError> {
+        let id = uuid::Uuid::now_v7().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        let waypoints_json = serde_json::to_string(waypoints)
+            .map_err(|e| SaplingError::InvalidInput(e.to_string()))?;
+        self.conn.execute(
+            "INSERT INTO routes (id, name, waypoints, distance_m, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            rusqlite::params![id, name, waypoints_json, distance_m, now, now],
+        )?;
+        Ok(Route { id, name: name.to_string(), notes: None, waypoints: waypoints.to_vec(), distance_m, created_at: now.clone(), updated_at: now })
+    }
+
+    pub fn list_routes(&self) -> Result<Vec<Route>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, notes, waypoints, distance_m, created_at, updated_at FROM routes WHERE deleted_at IS NULL ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, f64>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+            ))
+        })?;
+        let mut routes = Vec::new();
+        for row in rows {
+            let (id, name, notes, waypoints_json, distance_m, created_at, updated_at) = row?;
+            let waypoints: Vec<RouteWaypoint> = serde_json::from_str(&waypoints_json)
+                .map_err(|e| SaplingError::Database(format!("bad waypoints json: {e}")))?;
+            routes.push(Route { id, name, notes, waypoints, distance_m, created_at, updated_at });
+        }
+        Ok(routes)
+    }
+
+    pub fn get_route(&self, id: &str) -> Result<Option<Route>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, name, notes, waypoints, distance_m, created_at, updated_at FROM routes WHERE id = ?1 AND deleted_at IS NULL",
+        )?;
+        let mut rows = stmt.query_map(rusqlite::params![id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, f64>(4)?,
+                row.get::<_, String>(5)?,
+                row.get::<_, String>(6)?,
+            ))
+        })?;
+        if let Some(row) = rows.next() {
+            let (id, name, notes, waypoints_json, distance_m, created_at, updated_at) = row?;
+            let waypoints: Vec<RouteWaypoint> = serde_json::from_str(&waypoints_json)
+                .map_err(|e| SaplingError::Database(format!("bad waypoints json: {e}")))?;
+            Ok(Some(Route { id, name, notes, waypoints, distance_m, created_at, updated_at }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn delete_route(&self, id: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE routes SET deleted_at = ?1 WHERE id = ?2",
+            rusqlite::params![now, id],
+        )?;
+        Ok(())
+    }
+
+    pub fn rename_route(&self, id: &str, name: &str) -> Result<(), SaplingError> {
+        let now = chrono::Utc::now().to_rfc3339();
+        self.conn.execute(
+            "UPDATE routes SET name = ?1, updated_at = ?2 WHERE id = ?3 AND deleted_at IS NULL",
+            rusqlite::params![name, now, id],
+        )?;
+        Ok(())
+    }
+
     /// Soft-delete a seed by setting deleted_at.
+    /// Return all seeds associated with a specific trip via the trip_seeds join table.
+    pub fn get_seeds_for_trip(&self, trip_id: &str) -> Result<Vec<Seed>, SaplingError> {
+        let mut stmt = self.conn.prepare(
+            "SELECT s.id, s.seed_type, s.title, s.notes, s.latitude, s.longitude, s.elevation, s.confidence, s.tags, s.created_at, s.updated_at
+             FROM seeds s
+             JOIN trip_seeds ts ON s.id = ts.seed_id
+             WHERE ts.trip_id = ?1 AND ts.deleted_at IS NULL AND s.deleted_at IS NULL
+             ORDER BY s.created_at ASC",
+        )?;
+
+        let rows = stmt.query_map(rusqlite::params![trip_id], |row| {
+            Ok(SeedRow {
+                id: row.get(0)?,
+                seed_type: row.get(1)?,
+                title: row.get(2)?,
+                notes: row.get(3)?,
+                latitude: row.get(4)?,
+                longitude: row.get(5)?,
+                elevation: row.get(6)?,
+                confidence: row.get(7)?,
+                tags: row.get(8)?,
+                created_at: row.get(9)?,
+                updated_at: row.get(10)?,
+            })
+        })?;
+
+        let mut seeds = Vec::new();
+        for row in rows {
+            seeds.push(seed_from_row(row?)?);
+        }
+        Ok(seeds)
+    }
+
     pub fn delete_seed(&self, id: &str) -> Result<(), SaplingError> {
         let now = chrono::Utc::now().to_rfc3339();
         self.conn.execute(

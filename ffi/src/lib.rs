@@ -4,7 +4,8 @@ use std::sync::Mutex;
 
 use sapling_core::error::SaplingError;
 use sapling_core::models::{
-    ActivityState, CreateSeedInput, RecordingUpdate, Seed, SeedType, TrackPoint, TripSummary,
+    ActivityState, CreateSeedInput, RecordingUpdate, Route, RouteWaypoint, Seed, SeedType,
+    TrackPoint, TripSummary,
 };
 use sapling_core::recording::Recorder;
 use sapling_core::store::Store;
@@ -223,6 +224,49 @@ impl From<TripSummary> for FfiTripSummary {
     }
 }
 
+#[derive(uniffi::Record)]
+pub struct FfiRouteWaypoint {
+    pub latitude: f64,
+    pub longitude: f64,
+}
+
+impl From<RouteWaypoint> for FfiRouteWaypoint {
+    fn from(w: RouteWaypoint) -> Self {
+        FfiRouteWaypoint { latitude: w.latitude, longitude: w.longitude }
+    }
+}
+
+impl From<FfiRouteWaypoint> for RouteWaypoint {
+    fn from(w: FfiRouteWaypoint) -> Self {
+        RouteWaypoint { latitude: w.latitude, longitude: w.longitude }
+    }
+}
+
+#[derive(uniffi::Record)]
+pub struct FfiRoute {
+    pub id: String,
+    pub name: String,
+    pub notes: Option<String>,
+    pub waypoints: Vec<FfiRouteWaypoint>,
+    pub distance_m: f64,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<Route> for FfiRoute {
+    fn from(r: Route) -> Self {
+        FfiRoute {
+            id: r.id,
+            name: r.name,
+            notes: r.notes,
+            waypoints: r.waypoints.into_iter().map(|w| w.into()).collect(),
+            distance_m: r.distance_m,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+        }
+    }
+}
+
 /// Main entry point exposed to Swift/Kotlin via UniFFI.
 #[derive(uniffi::Object)]
 pub struct SaplingCore {
@@ -332,6 +376,17 @@ impl SaplingCore {
             .collect())
     }
 
+    pub fn get_seeds_for_trip(&self, trip_id: String) -> Result<Vec<FfiSeed>, FfiError> {
+        Ok(self
+            .store
+            .lock()
+            .unwrap()
+            .get_seeds_for_trip(&trip_id)?
+            .into_iter()
+            .map(|g| g.into())
+            .collect())
+    }
+
     pub fn delete_seed(&self, id: String) -> Result<(), FfiError> {
         self.store.lock().unwrap().delete_seed(&id)?;
         Ok(())
@@ -402,7 +457,18 @@ impl SaplingCore {
         Ok(())
     }
 
-    // -- GPX Import --
+    // -- GPX Import / Export --
+
+    pub fn export_trip_gpx(&self, trip_id: String) -> Result<String, FfiError> {
+        let store = self.store.lock().unwrap();
+        let trip = store
+            .get_trip(&trip_id)?
+            .ok_or_else(|| FfiError::NotFound { msg: format!("trip {trip_id} not found") })?;
+        let points = store.get_track_points(&trip_id)?;
+        let seeds = store.list_seeds()?;
+        drop(store);
+        Ok(sapling_core::gpx::export_trip_gpx(&trip, &points, &seeds))
+    }
 
     pub fn import_gpx(&self, file_path: String) -> Result<Vec<FfiTrackPoint>, FfiError> {
         let (points, _waypoints) = sapling_core::gpx::import_gpx(&file_path)?;
@@ -420,5 +486,53 @@ impl SaplingCore {
                 baro_relative_altitude: p.baro_relative_altitude,
             })
             .collect())
+    }
+
+    // -- Routes --
+
+    pub fn create_route(
+        &self,
+        name: String,
+        waypoints: Vec<FfiRouteWaypoint>,
+        distance_m: f64,
+    ) -> Result<FfiRoute, FfiError> {
+        let core_waypoints: Vec<RouteWaypoint> = waypoints.into_iter().map(|w| w.into()).collect();
+        let route = self.store.lock().unwrap().create_route(&name, &core_waypoints, distance_m)?;
+        Ok(route.into())
+    }
+
+    pub fn list_routes(&self) -> Result<Vec<FfiRoute>, FfiError> {
+        Ok(self
+            .store
+            .lock()
+            .unwrap()
+            .list_routes()?
+            .into_iter()
+            .map(|r| r.into())
+            .collect())
+    }
+
+    pub fn get_route(&self, id: String) -> Result<Option<FfiRoute>, FfiError> {
+        Ok(self.store.lock().unwrap().get_route(&id)?.map(|r| r.into()))
+    }
+
+    pub fn delete_route(&self, id: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().delete_route(&id)?;
+        Ok(())
+    }
+
+    pub fn rename_route(&self, id: String, name: String) -> Result<(), FfiError> {
+        self.store.lock().unwrap().rename_route(&id, &name)?;
+        Ok(())
+    }
+
+    pub fn import_trip_from_gpx(&self, file_path: String, name: Option<String>) -> Result<FfiTripSummary, FfiError> {
+        let (points, _waypoints) = sapling_core::gpx::import_gpx(&file_path)?;
+        if points.is_empty() {
+            return Err(FfiError::InvalidInput { msg: "GPX file contains no track points".into() });
+        }
+        let trip_name = name.unwrap_or_else(|| "Imported Trip".into());
+        let trip = self.store.lock().unwrap().import_trip_from_gpx(&trip_name, &points)?;
+        Ok(trip.into())
     }
 }
