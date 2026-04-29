@@ -204,3 +204,33 @@ func routeDifficulty(distanceM: Double, gainM: Double) -> RouteDifficulty {
     default:                               return .easy
     }
 }
+
+// MARK: - Seeds near route
+
+struct SeedOnRoute {
+    let seed: FfiSeed
+    let distanceAlongM: Double
+}
+
+/// Seeds within `radiusM` metres of the route polyline, sorted by distance from the start.
+func seedsNearRoute(
+    _ seeds: [FfiSeed],
+    waypoints: [FfiRouteWaypoint],
+    radiusM: Double = 500
+) -> [SeedOnRoute] {
+    let coords = waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+    guard coords.count >= 2 else { return [] }
+    return seeds.compactMap { seed in
+        let pt = CLLocationCoordinate2D(latitude: seed.latitude, longitude: seed.longitude)
+        guard distanceFromRoute(coords, user: pt) <= radiusM else { return nil }
+        return SeedOnRoute(seed: seed, distanceAlongM: distanceAlongRoute(coords, to: pt))
+    }
+    .sorted { $0.distanceAlongM < $1.distanceAlongM }
+}
+
+/// Distance along the route polyline from the start to the point nearest `target`.
+func distanceAlongRoute(_ route: [CLLocationCoordinate2D], to target: CLLocationCoordinate2D) -> Double {
+    guard route.count >= 2 else { return 0 }
+    let idx = nearestRouteIndex(route, to: target)
+    return (0..<idx).reduce(0.0) { $0 + haversineM(route[$1], route[$1 + 1]) }
+}
