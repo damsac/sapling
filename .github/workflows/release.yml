@@ -28,6 +28,7 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -76,6 +77,11 @@ jobs:
             echo "marketing_version=$VERSION" >> "$GITHUB_OUTPUT"
             echo "lane=external" >> "$GITHUB_OUTPUT"
             echo "Release lane: external (tag $TAG → MARKETING_VERSION=$VERSION)"
+          elif [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            BRANCH="${GITHUB_REF#refs/heads/}"
+            echo "marketing_version=" >> "$GITHUB_OUTPUT"
+            echo "lane=manual" >> "$GITHUB_OUTPUT"
+            echo "Release lane: manual dispatch (branch $BRANCH, MARKETING_VERSION from project.yml)"
           else
             echo "marketing_version=" >> "$GITHUB_OUTPUT"
             echo "lane=internal" >> "$GITHUB_OUTPUT"
