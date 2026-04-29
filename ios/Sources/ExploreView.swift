@@ -9,6 +9,7 @@ import UniformTypeIdentifiers
 struct ExploreView: View {
     var tripListViewModel: TripListViewModel
     var routeViewModel: RouteBuilderViewModel
+    var seedViewModel: SeedViewModel
     let onStartNavigation: (FfiRoute) -> Void
     let onStartBuilding: () -> Void
 
@@ -58,6 +59,7 @@ struct ExploreView: View {
         .sheet(item: $selectedRoute) { route in
             RouteDetailSheet(
                 route: route,
+                seeds: seedViewModel.seeds,
                 onStartNavigation: { onStartNavigation(route) },
                 onStartBuilding: onStartBuilding,
                 onDelete: {
@@ -264,6 +266,7 @@ private struct ExploreRouteCard: View {
 
 struct RouteDetailSheet: View {
     let route: FfiRoute
+    let seeds: [FfiSeed]
     let onStartNavigation: () -> Void
     let onStartBuilding: () -> Void
     let onDelete: () -> Void
@@ -279,6 +282,8 @@ struct RouteDetailSheet: View {
     private var stats: RouteElevationStats { elevationStats(from: route.waypoints) }
     private var difficulty: RouteDifficulty { routeDifficulty(distanceM: route.distanceM, gainM: stats.gain) }
     private var estimatedMinutes: Int { naismithMinutes(distanceM: route.distanceM, elevationGainM: stats.gain) }
+    private var nearbySeeds: [SeedOnRoute] { seedsNearRoute(seeds, waypoints: route.waypoints) }
+    private var isMultiDay: Bool { estimatedMinutes > 480 }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -323,6 +328,20 @@ struct RouteDetailSheet: View {
                     if stats.hasData {
                         ElevationProfileCard(waypoints: route.waypoints, stats: stats)
                             .padding(.horizontal, 16)
+                    }
+
+                    if !nearbySeeds.isEmpty {
+                        SeedsAlongRouteSection(seeds: nearbySeeds)
+                            .padding(.horizontal, 16)
+                    }
+
+                    if isMultiDay {
+                        DayBreakdownSection(
+                            campSeeds: nearbySeeds.filter { $0.seed.seedType == .camp },
+                            totalDistanceM: route.distanceM,
+                            estimatedMinutes: estimatedMinutes
+                        )
+                        .padding(.horizontal, 16)
                     }
 
                     HStack(spacing: 6) {
@@ -549,6 +568,169 @@ private struct RouteMapPreview: View {
                 .lineJoin(.round)
         }
         .mapControls { LogoView().position(.bottomLeft) }
+    }
+}
+
+// MARK: - Seeds Along Route Section
+
+private struct SeedsAlongRouteSection: View {
+    let seeds: [SeedOnRoute]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Seeds Along Route")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SaplingColors.bark)
+                Spacer()
+                Text("\(seeds.count)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SaplingColors.brand)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(SaplingColors.brand.opacity(0.1), in: Capsule())
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(allSeedTypes, id: \.displayName) { type in
+                        let count = seeds.filter { $0.seed.seedType == type }.count
+                        if count > 0 {
+                            HStack(spacing: 4) {
+                                Image(systemName: type.sfSymbol)
+                                    .font(.caption2)
+                                    .foregroundStyle(type.color)
+                                Text("\(count) \(type.displayName)")
+                                    .font(.caption2.weight(.medium))
+                                    .foregroundStyle(SaplingColors.ink)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(type.color.opacity(0.1), in: Capsule())
+                        }
+                    }
+                }
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(seeds.enumerated()), id: \.element.seed.id) { i, item in
+                    HStack(alignment: .top, spacing: 10) {
+                        Text(formatDistance(item.distanceAlongM))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(SaplingColors.bark)
+                            .frame(width: 44, alignment: .trailing)
+                            .padding(.top, 5)
+
+                        VStack(spacing: 0) {
+                            ZStack {
+                                Circle()
+                                    .fill(item.seed.seedType.color)
+                                    .frame(width: 28, height: 28)
+                                Image(systemName: item.seed.seedType.sfSymbol)
+                                    .font(.caption)
+                                    .foregroundStyle(.white)
+                            }
+                            if i < seeds.count - 1 {
+                                Rectangle()
+                                    .fill(SaplingColors.bark.opacity(0.2))
+                                    .frame(width: 1.5, height: 28)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.seed.title)
+                                .font(.subheadline)
+                                .foregroundStyle(SaplingColors.ink)
+                            if let notes = item.seed.notes, !notes.isEmpty {
+                                Text(notes)
+                                    .font(.caption2)
+                                    .foregroundStyle(SaplingColors.bark)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .padding(.top, 4)
+
+                        Spacer()
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+// MARK: - Day Breakdown Section
+
+private struct DayBreakdownSection: View {
+    let campSeeds: [SeedOnRoute]
+    let totalDistanceM: Double
+    let estimatedMinutes: Int
+
+    private var days: Int { max(2, (estimatedMinutes + 479) / 480) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Multi-Day Planning")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SaplingColors.bark)
+
+            if campSeeds.isEmpty {
+                HStack(spacing: 10) {
+                    Image(systemName: "moon.stars.fill")
+                        .font(.title3)
+                        .foregroundStyle(SaplingColors.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("~\(days) days estimated")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(SaplingColors.ink)
+                        Text("Drop camp seeds along the route to plan your nights.")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.bark)
+                    }
+                    Spacer()
+                }
+                .padding(10)
+                .background(SaplingColors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(daySegments.enumerated()), id: \.offset) { i, seg in
+                        HStack(spacing: 8) {
+                            Text("Day \(i + 1)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(SaplingColors.brand, in: Capsule())
+                            Text(seg.label)
+                                .font(.subheadline)
+                                .foregroundStyle(SaplingColors.ink)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(formatDistance(seg.distanceM))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(SaplingColors.bark)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private struct DaySegment { let label: String; let distanceM: Double }
+
+    private var daySegments: [DaySegment] {
+        var result: [DaySegment] = []
+        var prevDist = 0.0
+        var checkpoints = campSeeds.map { ($0.seed.title, $0.distanceAlongM) }
+        checkpoints.append(("End", totalDistanceM))
+        for (name, dist) in checkpoints {
+            result.append(DaySegment(label: "→ \(name)", distanceM: dist - prevDist))
+            prevDist = dist
+        }
+        return result
     }
 }
 

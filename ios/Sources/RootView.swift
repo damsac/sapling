@@ -52,6 +52,7 @@ struct RootView: View {
             ExploreView(
                 tripListViewModel: tripListViewModel,
                 routeViewModel: routeViewModel,
+                seedViewModel: seedViewModel,
                 onStartNavigation: { route in
                     activeRoute = route
                     displayRoute = route.waypoints.map {
