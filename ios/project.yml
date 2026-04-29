@@ -25,7 +25,13 @@ targets:
         excludes:
           - "*.h"
           - "*.modulemap"
+      - path: Resources/Assets.xcassets
     settings:
+      base:
+        # iPhone-only; iPad multitasking otherwise requires all 4 orientations
+        # but we only support portrait.
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       # Override XcodeGen's target-level default of CODE_SIGN_IDENTITY=
       # "iPhone Developer". With CODE_SIGN_STYLE=Automatic, Xcode rejects
       # any explicit identity as a conflict — automatic signing must be
