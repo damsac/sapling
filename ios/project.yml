@@ -10,6 +10,7 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
 packages:
   MapLibreSwiftUI:
     url: https://github.com/maplibre/swiftui-dsl
@@ -24,6 +25,16 @@ targets:
         excludes:
           - "*.h"
           - "*.modulemap"
+    settings:
+      # Override XcodeGen's target-level default of CODE_SIGN_IDENTITY=
+      # "iPhone Developer". With CODE_SIGN_STYLE=Automatic, Xcode rejects
+      # any explicit identity as a conflict — automatic signing must be
+      # the sole authority. Empty string clears xcodegen's default.
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: ""
+        Release:
+          CODE_SIGN_IDENTITY: ""
     dependencies:
       - framework: Frameworks/SaplingCore.xcframework
         embed: false
