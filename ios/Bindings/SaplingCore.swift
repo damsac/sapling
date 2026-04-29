@@ -1192,12 +1192,14 @@ public func FfiConverterTypeFfiRoute_lower(_ value: FfiRoute) -> RustBuffer {
 public struct FfiRouteWaypoint {
     public var latitude: Double
     public var longitude: Double
+    public var elevation: Double?
 
     // Default memberwise initializers are never public by default, so we
     // declare one manually.
-    public init(latitude: Double, longitude: Double) {
+    public init(latitude: Double, longitude: Double, elevation: Double?) {
         self.latitude = latitude
         self.longitude = longitude
+        self.elevation = elevation
     }
 }
 
@@ -1214,12 +1216,16 @@ extension FfiRouteWaypoint: Equatable, Hashable {
         if lhs.longitude != rhs.longitude {
             return false
         }
+        if lhs.elevation != rhs.elevation {
+            return false
+        }
         return true
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(latitude)
         hasher.combine(longitude)
+        hasher.combine(elevation)
     }
 }
 
@@ -1233,13 +1239,15 @@ public struct FfiConverterTypeFfiRouteWaypoint: FfiConverterRustBuffer {
         return
             try FfiRouteWaypoint(
                 latitude: FfiConverterDouble.read(from: &buf), 
-                longitude: FfiConverterDouble.read(from: &buf)
+                longitude: FfiConverterDouble.read(from: &buf), 
+                elevation: FfiConverterOptionDouble.read(from: &buf)
         )
     }
 
     public static func write(_ value: FfiRouteWaypoint, into buf: inout [UInt8]) {
         FfiConverterDouble.write(value.latitude, into: &buf)
         FfiConverterDouble.write(value.longitude, into: &buf)
+        FfiConverterOptionDouble.write(value.elevation, into: &buf)
     }
 }
 

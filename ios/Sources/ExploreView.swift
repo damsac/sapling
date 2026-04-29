@@ -1,3 +1,4 @@
+import Charts
 import CoreLocation
 import MapLibre
 import MapLibreSwiftDSL
@@ -275,6 +276,9 @@ struct RouteDetailSheet: View {
     private var routeCoordinates: [CLLocationCoordinate2D] {
         route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
     }
+    private var stats: RouteElevationStats { elevationStats(from: route.waypoints) }
+    private var difficulty: RouteDifficulty { routeDifficulty(distanceM: route.distanceM, gainM: stats.gain) }
+    private var estimatedMinutes: Int { naismithMinutes(distanceM: route.distanceM, elevationGainM: stats.gain) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -293,16 +297,58 @@ struct RouteDetailSheet: View {
                             .padding(.horizontal, 16)
                     }
 
-                    VStack(spacing: 4) {
+                    HStack(alignment: .center) {
                         Text(route.name)
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(SaplingColors.ink)
-                        Text("\(formatDistance(route.distanceM)) · \(route.waypoints.count) waypoints")
-                            .font(.subheadline)
-                            .foregroundStyle(SaplingColors.bark)
+                        Spacer()
+                        DifficultyBadge(difficulty: difficulty)
+                    }
+                    .padding(.horizontal, 16)
+
+                    HStack(spacing: 0) {
+                        RouteStatCell(label: "Distance", value: formatDistance(route.distanceM))
+                        Divider().frame(height: 32)
+                        RouteStatCell(label: "Est. Time", value: formatDurationMinutes(estimatedMinutes))
+                        if stats.hasData {
+                            Divider().frame(height: 32)
+                            RouteStatCell(label: "Elev. Gain", value: formatElevation(stats.gain))
+                        }
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
                     .padding(.horizontal, 16)
+
+                    if stats.hasData {
+                        ElevationProfileCard(waypoints: route.waypoints, stats: stats)
+                            .padding(.horizontal, 16)
+                    }
+
+                    HStack(spacing: 6) {
+                        Image(systemName: "calendar")
+                            .font(.caption)
+                        Text("Created \(formattedDate(route.createdAt))")
+                            .font(.caption)
+                    }
+                    .foregroundStyle(SaplingColors.bark)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+
+                    if let notes = route.notes, !notes.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Notes")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(SaplingColors.bark)
+                            Text(notes)
+                                .font(.callout)
+                                .foregroundStyle(SaplingColors.ink)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(14)
+                        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 16)
+                    }
 
                     VStack(spacing: 10) {
                         Button {
@@ -360,6 +406,124 @@ struct RouteDetailSheet: View {
         }
     }
 }
+
+// MARK: - Detail Sheet Helpers
+
+private struct DifficultyBadge: View {
+    let difficulty: RouteDifficulty
+
+    private var color: Color {
+        switch difficulty {
+        case .easy:     return .green
+        case .moderate: return Color(hue: 0.13, saturation: 0.8, brightness: 0.85)
+        case .hard:     return .orange
+        case .epic:     return .red
+        }
+    }
+
+    var body: some View {
+        Text(difficulty.rawValue)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(color, in: Capsule())
+    }
+}
+
+private struct RouteStatCell: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(SaplingColors.ink)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(SaplingColors.bark)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct ElevationProfileCard: View {
+    let waypoints: [FfiRouteWaypoint]
+    let stats: RouteElevationStats
+
+    private var elevs: [Double] { waypoints.compactMap(\.elevation) }
+    private var baseline: Double { stats.minElev - max(10, (stats.maxElev - stats.minElev) * 0.12) }
+    private var ceiling: Double { stats.maxElev + max(10, (stats.maxElev - stats.minElev) * 0.12) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Elevation Profile")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SaplingColors.bark)
+
+            Chart {
+                ForEach(Array(elevs.enumerated()), id: \.offset) { i, elev in
+                    AreaMark(
+                        x: .value("Point", i),
+                        yStart: .value("Base", baseline),
+                        yEnd: .value("Elevation", elev)
+                    )
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [SaplingColors.brand.opacity(0.22), SaplingColors.brand.opacity(0.04)],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                    )
+                    LineMark(
+                        x: .value("Point", i),
+                        y: .value("Elevation", elev)
+                    )
+                    .foregroundStyle(SaplingColors.brand)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                }
+            }
+            .chartYScale(domain: baseline...ceiling)
+            .chartXAxis(.hidden)
+            .chartYAxis {
+                AxisMarks(values: .automatic(desiredCount: 3)) { value in
+                    AxisGridLine()
+                    AxisValueLabel {
+                        if let v = value.as(Double.self) {
+                            Text(formatElevation(v))
+                                .font(.caption2)
+                                .foregroundStyle(SaplingColors.bark)
+                        }
+                    }
+                }
+            }
+            .frame(height: 100)
+
+            HStack(spacing: 0) {
+                ElevMiniStat(label: "Gain", value: "+\(formatElevation(stats.gain))", color: SaplingColors.brand)
+                ElevMiniStat(label: "Loss", value: "-\(formatElevation(stats.loss))", color: SaplingColors.accent)
+                ElevMiniStat(label: "High Point", value: formatElevation(stats.maxElev), color: SaplingColors.ink)
+            }
+        }
+        .padding(14)
+        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+private struct ElevMiniStat: View {
+    let label: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value).font(.caption.weight(.semibold)).foregroundStyle(color)
+            Text(label).font(.caption2).foregroundStyle(SaplingColors.bark)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
 
 // MARK: - Route Map Preview
 

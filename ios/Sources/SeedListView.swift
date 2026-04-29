@@ -1,13 +1,15 @@
 import SwiftUI
+import CoreLocation
 
 struct SeedListView: View {
     @Bindable var viewModel: SeedViewModel
+    var currentLocation: CLLocationCoordinate2D?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             Group {
-                if viewModel.seeds.isEmpty {
+                if viewModel.seeds.isEmpty && currentLocation == nil {
                     emptyState
                 } else {
                     seedList
@@ -28,6 +30,41 @@ struct SeedListView: View {
 
     private var seedList: some View {
         List {
+            if let location = currentLocation {
+                Section("Drop a seed here") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 16) {
+                            ForEach(allSeedTypes, id: \.displayName) { type in
+                                Button {
+                                    viewModel.quickDropSeed(type: type, at: location)
+                                    dismiss()
+                                } label: {
+                                    VStack(spacing: 6) {
+                                        Circle()
+                                            .fill(type.color)
+                                            .frame(width: 48, height: 48)
+                                            .overlay {
+                                                Image(systemName: type.sfSymbol)
+                                                    .font(.body)
+                                                    .foregroundStyle(.white)
+                                            }
+                                            .overlay {
+                                                Circle().stroke(.white, lineWidth: 2)
+                                            }
+                                        Text(type.displayName)
+                                            .font(.caption2)
+                                            .foregroundStyle(SaplingColors.ink)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 8)
+                    }
+                }
+            }
+
             ForEach(allSeedTypes, id: \.displayName) { type in
                 let group = viewModel.seeds.filter { $0.seedType == type }
                 if !group.isEmpty {
@@ -59,7 +96,7 @@ struct SeedListView: View {
 
     private var emptyState: some View {
         VStack(spacing: 12) {
-            Image(systemName: "mappin.slash")
+            Image(systemName: "leaf")
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
 
@@ -67,7 +104,7 @@ struct SeedListView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
 
-            Text("Long-press the map or use the quick-drop bar while recording.")
+            Text("Long-press the map to drop a seed, or start recording to drop one at your location.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

@@ -106,11 +106,13 @@ pub struct RecordingUpdate {
     pub point_count: u32,
 }
 
-/// A waypoint in a planned route — just a coordinate pair.
+/// A waypoint in a planned route.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouteWaypoint {
     pub latitude: f64,
     pub longitude: f64,
+    #[serde(default)]
+    pub elevation: Option<f64>,
 }
 
 /// A planned route (distinct from a recorded trip).

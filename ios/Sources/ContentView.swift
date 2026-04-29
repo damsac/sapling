@@ -2,17 +2,19 @@ import SwiftUI
 import CoreLocation
 import MapLibre
 
-/// Map tab — live recording, seed dropping, route building.
+/// Map tab — live recording, seed dropping, route building, and route navigation.
 struct ContentView: View {
     var viewModel: RecordingViewModel
     var seedViewModel: SeedViewModel
     var tripListViewModel: TripListViewModel
     var routeViewModel: RouteBuilderViewModel
     @Binding var displayRoute: [CLLocationCoordinate2D]?
+    @Binding var activeRoute: FfiRoute?
 
     @State private var showBackgroundModal: Bool = false
     @State private var showOfflineSheet: Bool = false
     @State private var showSeedList: Bool = false
+    @State private var showRouteList: Bool = false
     @State private var showStopSheet: Bool = false
     @State private var showRouteSave: Bool = false
     @State private var routeSaveName: String = ""
@@ -20,12 +22,13 @@ struct ContentView: View {
     @State private var snapToLocationTrigger: Bool = false
     private var offlineManager = OfflineMapManager.shared
 
-    init(viewModel: RecordingViewModel, seedViewModel: SeedViewModel, tripListViewModel: TripListViewModel, routeViewModel: RouteBuilderViewModel, displayRoute: Binding<[CLLocationCoordinate2D]?>) {
+    init(viewModel: RecordingViewModel, seedViewModel: SeedViewModel, tripListViewModel: TripListViewModel, routeViewModel: RouteBuilderViewModel, displayRoute: Binding<[CLLocationCoordinate2D]?>, activeRoute: Binding<FfiRoute?>) {
         self.viewModel = viewModel
         self.seedViewModel = seedViewModel
         self.tripListViewModel = tripListViewModel
         self.routeViewModel = routeViewModel
         self._displayRoute = displayRoute
+        self._activeRoute = activeRoute
     }
 
     var body: some View {
@@ -43,7 +46,7 @@ struct ContentView: View {
                 },
                 isRouteBuilding: routeViewModel.isBuilding,
                 routeWaypoints: routeViewModel.isBuilding ? routeViewModel.waypoints : nil,
-                routePath: routeViewModel.isBuilding ? routeViewModel.fullRoutePath : nil,
+                routePath: routeViewModel.isBuilding ? routeViewModel.fullRouteCoordinates : nil,
                 onRouteWaypointAdded: { coord in
                     routeViewModel.addWaypoint(coord)
                 },
@@ -77,12 +80,12 @@ struct ContentView: View {
                         Button {
                             showSeedList = true
                         } label: {
-                            Image(systemName: "mappin.and.ellipse")
+                            Image(systemName: "leaf.fill")
                                 .font(.body.weight(.medium))
-                                .foregroundStyle(SaplingColors.ink)
+                                .foregroundStyle(.white)
                                 .frame(width: 40, height: 40)
-                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
-                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                                .background(SaplingColors.brand, in: Circle())
+                                .shadow(color: SaplingColors.brand.opacity(0.45), radius: 6, y: 3)
                         }
 
                         Button {
@@ -90,6 +93,7 @@ struct ContentView: View {
                                 withAnimation { routeViewModel.cancel() }
                             } else {
                                 displayRoute = nil
+                                activeRoute = nil
                                 withAnimation { routeViewModel.startBuilding() }
                             }
                         } label: {
@@ -100,6 +104,23 @@ struct ContentView: View {
                                 .background(
                                     routeViewModel.isBuilding
                                         ? SaplingColors.stopRecording.opacity(0.12)
+                                        : SaplingColors.parchment.opacity(0.92),
+                                    in: Circle()
+                                )
+                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        }
+
+                        Button {
+                            routeViewModel.loadRoutes()
+                            showRouteList = true
+                        } label: {
+                            Image(systemName: "map")
+                                .font(.body.weight(.medium))
+                                .foregroundStyle(activeRoute != nil ? SaplingColors.brand : SaplingColors.ink)
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    activeRoute != nil
+                                        ? SaplingColors.brand.opacity(0.12)
                                         : SaplingColors.parchment.opacity(0.92),
                                     in: Circle()
                                 )
@@ -210,14 +231,19 @@ struct ContentView: View {
                     && !seedViewModel.isShowingDetail
                     && !routeViewModel.isBuilding
                 {
-                    VStack(spacing: 16) {
-                        if viewModel.isRecording {
-                            SeedQuickDropBar { type in
-                                guard let location = viewModel.currentLocation else { return }
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    seedViewModel.quickDropSeed(type: type, at: location.coordinate)
+                    VStack(spacing: 12) {
+                        if let route = activeRoute, let routeCoords = displayRoute, !routeCoords.isEmpty {
+                            ActiveRoutePanel(
+                                route: route,
+                                routeCoords: routeCoords,
+                                userLocation: viewModel.currentLocation?.coordinate,
+                                onEnd: {
+                                    withAnimation {
+                                        displayRoute = nil
+                                        activeRoute = nil
+                                    }
                                 }
-                            }
+                            )
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
 
@@ -295,8 +321,27 @@ struct ContentView: View {
             .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showSeedList) {
-            SeedListView(viewModel: seedViewModel)
+            SeedListView(viewModel: seedViewModel, currentLocation: viewModel.currentLocation?.coordinate)
                 .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showRouteList) {
+            RouteListView(
+                viewModel: routeViewModel,
+                onSelectRoute: { route in
+                    activeRoute = route
+                    displayRoute = route.waypoints.map {
+                        CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                    }
+                    snapToLocationTrigger.toggle()
+                },
+                onStartBuilding: {
+                    showRouteList = false
+                    displayRoute = nil
+                    activeRoute = nil
+                    withAnimation { routeViewModel.startBuilding() }
+                }
+            )
+            .presentationDetents([.medium, .large])
         }
         .alert("Name Your Route", isPresented: $showRouteSave) {
             TextField("Route name", text: $routeSaveName)
@@ -306,7 +351,7 @@ struct ContentView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("How many waypoints: \(routeViewModel.waypoints.count)")
+            Text(formatDistance(routeViewModel.distanceMeters) + " · \(routeViewModel.waypoints.count) waypoints")
         }
         .alert("Route Error", isPresented: Binding(
             get: { routeViewModel.lastError != nil },
