@@ -1,28 +1,29 @@
-import Charts
 import CoreLocation
-import MapLibre
-import MapLibreSwiftDSL
-import MapLibreSwiftUI
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ExploreView: View {
-    var tripListViewModel: TripListViewModel
-    var routeViewModel: RouteBuilderViewModel
     var seedViewModel: SeedViewModel
-    let onStartNavigation: (FfiRoute) -> Void
-    let onStartBuilding: () -> Void
+    var routeViewModel: RouteBuilderViewModel
+    let onStartNavigation: ([CLLocationCoordinate2D]) -> Void
 
-    @State private var selectedRoute: FfiRoute? = nil
-    @State private var showImportPicker = false
+    @State private var searchVM = TrailSearchViewModel()
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    searchStub
-                    tripsSection
-                    routesSection
+                VStack(alignment: .leading, spacing: 24) {
+                    searchBar
+                    if searchVM.isSearching {
+                        searchingState
+                    } else if let error = searchVM.searchError {
+                        errorCard(error)
+                    } else if !searchVM.results.isEmpty {
+                        resultsList
+                    } else if searchVM.searchText.isEmpty {
+                        discoveryStubs
+                    } else {
+                        emptyResults
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -31,64 +32,29 @@ struct ExploreView: View {
             .background(SaplingColors.stone.ignoresSafeArea())
             .navigationTitle("Explore")
             .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: String.self) { tripId in
-                if let trip = tripListViewModel.trips.first(where: { $0.id == tripId }) {
-                    TripDetailView(trip: trip, viewModel: tripListViewModel)
-                }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showImportPicker = true
-                    } label: {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                }
-            }
-            .fileImporter(
-                isPresented: $showImportPicker,
-                allowedContentTypes: [UTType(filenameExtension: "gpx") ?? .xml],
-                allowsMultipleSelection: false
-            ) { result in
-                if case .success(let urls) = result, let url = urls.first {
-                    let name = url.deletingPathExtension().lastPathComponent
-                    tripListViewModel.importGpx(fileURL: url, name: name.isEmpty ? nil : name)
-                }
-            }
-        }
-        .sheet(item: $selectedRoute) { route in
-            RouteDetailSheet(
-                route: route,
-                seeds: seedViewModel.seeds,
-                onStartNavigation: { onStartNavigation(route) },
-                onStartBuilding: onStartBuilding,
-                onDelete: {
-                    routeViewModel.deleteRoute(route.id)
-                    selectedRoute = nil
-                },
-                onRename: { name in
-                    routeViewModel.renameRoute(route.id, name: name)
-                    selectedRoute = nil
-                }
-            )
-            .presentationDetents([.medium, .large])
-        }
-        .onAppear {
-            tripListViewModel.loadTrips()
-            routeViewModel.loadRoutes()
         }
     }
 
-    // MARK: - Search Stub
+    // MARK: - Search Bar
 
-    private var searchStub: some View {
+    private var searchBar: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(SaplingColors.bark)
-            Text("Trail search — coming in Phase 2")
+            TextField("Search trails, parks, peaks…", text: $searchVM.searchText)
                 .font(.subheadline)
-                .foregroundStyle(SaplingColors.bark)
-            Spacer()
+                .foregroundStyle(SaplingColors.ink)
+                .autocorrectionDisabled()
+                .onSubmit { searchVM.search() }
+            if !searchVM.searchText.isEmpty {
+                Button {
+                    searchVM.searchText = ""
+                    searchVM.clearResults()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(SaplingColors.bark.opacity(0.5))
+                }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -99,81 +65,12 @@ struct ExploreView: View {
         )
     }
 
-    // MARK: - My Trips Section
+    // MARK: - States
 
-    private var tripsSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("MY TRIPS") {
-                Button {
-                    showImportPicker = true
-                } label: {
-                    Label("Import GPX", systemImage: "plus")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(SaplingColors.accent)
-                }
-            }
-
-            if tripListViewModel.trips.isEmpty {
-                emptyCard(icon: "figure.hiking", message: "No trips yet — hit record and go explore.")
-            } else {
-                ForEach(tripListViewModel.trips, id: \.id) { trip in
-                    NavigationLink(value: trip.id) {
-                        ExploreTripCard(trip: trip)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    // MARK: - Saved Routes Section
-
-    private var routesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader("SAVED ROUTES") {
-                Button {
-                    onStartBuilding()
-                } label: {
-                    Label("New", systemImage: "plus")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(SaplingColors.brand)
-                }
-            }
-
-            if routeViewModel.savedRoutes.isEmpty {
-                emptyCard(icon: "map", message: "No saved routes — build one on the Map tab.")
-            } else {
-                ForEach(routeViewModel.savedRoutes, id: \.id) { route in
-                    Button {
-                        selectedRoute = route
-                    } label: {
-                        ExploreRouteCard(route: route)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
-    private func sectionHeader(_ title: String, @ViewBuilder trailing: () -> some View) -> some View {
-        HStack {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(SaplingColors.bark)
-                .kerning(0.8)
-            Spacer()
-            trailing()
-        }
-    }
-
-    private func emptyCard(icon: String, message: String) -> some View {
+    private var searchingState: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundStyle(SaplingColors.bark.opacity(0.5))
-            Text(message)
+            ProgressView()
+            Text("Searching trails…")
                 .font(.subheadline)
                 .foregroundStyle(SaplingColors.bark)
         }
@@ -181,54 +78,132 @@ struct ExploreView: View {
         .padding(16)
         .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
     }
-}
 
-// MARK: - Trip Card
-
-private struct ExploreTripCard: View {
-    let trip: FfiTripSummary
-
-    var body: some View {
+    private var emptyResults: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(SaplingColors.accent)
-                .frame(width: 3)
-                .frame(minHeight: 52)
+            Image(systemName: "magnifyingglass")
+                .font(.title2)
+                .foregroundStyle(SaplingColors.bark.opacity(0.4))
+            VStack(alignment: .leading, spacing: 3) {
+                Text("No trails found")
+                    .font(.subheadline)
+                    .foregroundStyle(SaplingColors.bark)
+                Text("Try a different location or trail name.")
+                    .font(.caption2)
+                    .foregroundStyle(SaplingColors.bark.opacity(0.55))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(trip.name)
-                    .font(.subheadline.weight(.semibold))
+    private func errorCard(_ message: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.title2)
+                .foregroundStyle(SaplingColors.accent)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Search failed")
+                    .font(.subheadline.weight(.medium))
                     .foregroundStyle(SaplingColors.ink)
-                Text(formattedDate(trip.createdAt))
+                Text(message)
                     .font(.caption2)
                     .foregroundStyle(SaplingColors.bark)
-                HStack(spacing: 6) {
-                    Text(formatDistance(trip.distanceM))
-                    Text("·")
-                    Text("+\(formatElevation(trip.elevationGain))")
-                    Text("·")
-                    Text(formatDuration(trip.durationMs))
-                }
-                .font(.caption2)
-                .foregroundStyle(SaplingColors.bark)
+                    .lineLimit(2)
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(SaplingColors.bark.opacity(0.5))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
         .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    // MARK: - Results List
+
+    private var resultsList: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(searchVM.results.count) TRAIL\(searchVM.results.count == 1 ? "" : "S") FOUND")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SaplingColors.bark)
+                .kerning(0.8)
+
+            ForEach(searchVM.results) { trail in
+                NavigationLink {
+                    TrailDetailView(
+                        trail: trail,
+                        seedViewModel: seedViewModel,
+                        routeViewModel: routeViewModel,
+                        onStartNavigation: onStartNavigation
+                    )
+                } label: {
+                    TrailResultRow(trail: trail)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: - Discovery Stubs
+
+    private var discoveryStubs: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            discoverySection(
+                "NEAR YOU",
+                icon: "location.fill",
+                message: "Discover trails near your current location.",
+                hint: "Search a place name to explore nearby routes."
+            )
+            discoverySection(
+                "TRENDING",
+                icon: "chart.line.uptrend.xyaxis",
+                message: "Popular routes from the Sapling community.",
+                hint: "Coming in Phase 2"
+            )
+            discoverySection(
+                "CURATED LISTS",
+                icon: "list.star",
+                message: "Best wildflower trails, peak-baggers, and more.",
+                hint: "Coming in Phase 2"
+            )
+        }
+    }
+
+    private func discoverySection(_ title: String, icon: String, message: String, hint: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SaplingColors.bark)
+                .kerning(0.8)
+
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(SaplingColors.brand.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: icon)
+                        .font(.body)
+                        .foregroundStyle(SaplingColors.brand)
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(message)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(SaplingColors.ink)
+                    Text(hint)
+                        .font(.caption2)
+                        .foregroundStyle(SaplingColors.bark)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+        }
     }
 }
 
-// MARK: - Route Card
+// MARK: - Trail Result Row
 
-private struct ExploreRouteCard: View {
-    let route: FfiRoute
+private struct TrailResultRow: View {
+    let trail: TrailResult
 
     var body: some View {
         HStack(spacing: 12) {
@@ -236,21 +211,37 @@ private struct ExploreRouteCard: View {
                 Circle()
                     .fill(SaplingColors.brand.opacity(0.12))
                     .frame(width: 40, height: 40)
-                Image(systemName: "point.3.filled.connected.trianglepath.dotted")
+                Image(systemName: "figure.hiking")
                     .font(.body)
                     .foregroundStyle(SaplingColors.brand)
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(route.name)
+                Text(trail.name)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(SaplingColors.ink)
-                Text(formatDistance(route.distanceM))
-                    .font(.caption2)
-                    .foregroundStyle(SaplingColors.bark)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(formatDistance(trail.distanceM))
+                    if trail.elevationGainM > 0 {
+                        Text("·")
+                        Text("+\(formatElevation(trail.elevationGainM))")
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(SaplingColors.bark)
             }
 
             Spacer()
+
+            if let label = trail.difficultyLabel {
+                Text(label)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(difficultyColor(label), in: Capsule())
+            }
 
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
@@ -260,501 +251,13 @@ private struct ExploreRouteCard: View {
         .padding(.vertical, 12)
         .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
     }
-}
 
-// MARK: - Route Detail Sheet
-
-struct RouteDetailSheet: View {
-    let route: FfiRoute
-    let seeds: [FfiSeed]
-    let onStartNavigation: () -> Void
-    let onStartBuilding: () -> Void
-    let onDelete: () -> Void
-    let onRename: (String) -> Void
-
-    @State private var showRenameAlert = false
-    @State private var renameText = ""
-    @Environment(\.dismiss) private var dismiss
-
-    private var routeCoordinates: [CLLocationCoordinate2D] {
-        route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-    }
-    private var stats: RouteElevationStats { elevationStats(from: route.waypoints) }
-    private var difficulty: RouteDifficulty { routeDifficulty(distanceM: route.distanceM, gainM: stats.gain) }
-    private var estimatedMinutes: Int { naismithMinutes(distanceM: route.distanceM, elevationGainM: stats.gain) }
-    private var nearbySeeds: [SeedOnRoute] { seedsNearRoute(seeds, waypoints: route.waypoints) }
-    private var isMultiDay: Bool { estimatedMinutes > 480 }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Capsule()
-                .fill(SaplingColors.bark.opacity(0.35))
-                .frame(width: 36, height: 5)
-                .padding(.top, 12)
-                .padding(.bottom, 16)
-
-            ScrollView {
-                VStack(spacing: 20) {
-                    if !routeCoordinates.isEmpty {
-                        RouteMapPreview(coordinates: routeCoordinates)
-                            .frame(height: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .padding(.horizontal, 16)
-                    }
-
-                    HStack(alignment: .center) {
-                        Text(route.name)
-                            .font(.title3.weight(.semibold))
-                            .foregroundStyle(SaplingColors.ink)
-                        Spacer()
-                        DifficultyBadge(difficulty: difficulty)
-                    }
-                    .padding(.horizontal, 16)
-
-                    HStack(spacing: 0) {
-                        RouteStatCell(label: "Distance", value: formatDistance(route.distanceM))
-                        Divider().frame(height: 32)
-                        RouteStatCell(label: "Est. Time", value: formatDurationMinutes(estimatedMinutes))
-                        if stats.hasData {
-                            Divider().frame(height: 32)
-                            RouteStatCell(label: "Elev. Gain", value: formatElevation(stats.gain))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
-                    .padding(.horizontal, 16)
-
-                    if stats.hasData {
-                        ElevationProfileCard(waypoints: route.waypoints, stats: stats)
-                            .padding(.horizontal, 16)
-                    }
-
-                    if !nearbySeeds.isEmpty {
-                        SeedsAlongRouteSection(seeds: nearbySeeds)
-                            .padding(.horizontal, 16)
-                    }
-
-                    if isMultiDay {
-                        DayBreakdownSection(
-                            campSeeds: nearbySeeds.filter { $0.seed.seedType == .camp },
-                            totalDistanceM: route.distanceM,
-                            estimatedMinutes: estimatedMinutes
-                        )
-                        .padding(.horizontal, 16)
-                    }
-
-                    HStack(spacing: 6) {
-                        Image(systemName: "calendar")
-                            .font(.caption)
-                        Text("Created \(formattedDate(route.createdAt))")
-                            .font(.caption)
-                    }
-                    .foregroundStyle(SaplingColors.bark)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-
-                    if let notes = route.notes, !notes.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Notes")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(SaplingColors.bark)
-                            Text(notes)
-                                .font(.callout)
-                                .foregroundStyle(SaplingColors.ink)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(14)
-                        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal, 16)
-                    }
-
-                    VStack(spacing: 10) {
-                        Button {
-                            dismiss()
-                            onStartNavigation()
-                        } label: {
-                            Label("Start Navigation", systemImage: "location.fill")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .background(SaplingColors.brand, in: RoundedRectangle(cornerRadius: 14))
-                        }
-
-                        HStack(spacing: 10) {
-                            Button {
-                                renameText = route.name
-                                showRenameAlert = true
-                            } label: {
-                                Label("Rename", systemImage: "pencil")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(SaplingColors.ink)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
-                            }
-
-                            Button(role: .destructive) {
-                                dismiss()
-                                onDelete()
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(SaplingColors.stopRecording)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(SaplingColors.stopRecording.opacity(0.1), in: RoundedRectangle(cornerRadius: 12))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 32)
-                }
-            }
+    private func difficultyColor(_ label: String) -> Color {
+        switch label {
+        case "Easy":     return .green
+        case "Moderate": return Color(hue: 0.13, saturation: 0.8, brightness: 0.85)
+        case "Hard":     return .orange
+        default:         return .red
         }
-        .background(SaplingColors.parchment.ignoresSafeArea())
-        .alert("Rename Route", isPresented: $showRenameAlert) {
-            TextField("Route name", text: $renameText)
-            Button("Save") {
-                let name = renameText.trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty { onRename(name) }
-                dismiss()
-            }
-            Button("Cancel", role: .cancel) { }
-        }
-    }
-}
-
-// MARK: - Detail Sheet Helpers
-
-private struct DifficultyBadge: View {
-    let difficulty: RouteDifficulty
-
-    private var color: Color {
-        switch difficulty {
-        case .easy:     return .green
-        case .moderate: return Color(hue: 0.13, saturation: 0.8, brightness: 0.85)
-        case .hard:     return .orange
-        case .epic:     return .red
-        }
-    }
-
-    var body: some View {
-        Text(difficulty.rawValue)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(color, in: Capsule())
-    }
-}
-
-private struct RouteStatCell: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(value)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(SaplingColors.ink)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(SaplingColors.bark)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-private struct ElevationProfileCard: View {
-    let waypoints: [FfiRouteWaypoint]
-    let stats: RouteElevationStats
-
-    private var elevs: [Double] { waypoints.compactMap(\.elevation) }
-    private var baseline: Double { stats.minElev - max(10, (stats.maxElev - stats.minElev) * 0.12) }
-    private var ceiling: Double { stats.maxElev + max(10, (stats.maxElev - stats.minElev) * 0.12) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Elevation Profile")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(SaplingColors.bark)
-
-            Chart {
-                ForEach(Array(elevs.enumerated()), id: \.offset) { i, elev in
-                    AreaMark(
-                        x: .value("Point", i),
-                        yStart: .value("Base", baseline),
-                        yEnd: .value("Elevation", elev)
-                    )
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: [SaplingColors.brand.opacity(0.22), SaplingColors.brand.opacity(0.04)],
-                            startPoint: .top, endPoint: .bottom
-                        )
-                    )
-                    LineMark(
-                        x: .value("Point", i),
-                        y: .value("Elevation", elev)
-                    )
-                    .foregroundStyle(SaplingColors.brand)
-                    .lineStyle(StrokeStyle(lineWidth: 2))
-                }
-            }
-            .chartYScale(domain: baseline...ceiling)
-            .chartXAxis(.hidden)
-            .chartYAxis {
-                AxisMarks(values: .automatic(desiredCount: 3)) { value in
-                    AxisGridLine()
-                    AxisValueLabel {
-                        if let v = value.as(Double.self) {
-                            Text(formatElevation(v))
-                                .font(.caption2)
-                                .foregroundStyle(SaplingColors.bark)
-                        }
-                    }
-                }
-            }
-            .frame(height: 100)
-
-            HStack(spacing: 0) {
-                ElevMiniStat(label: "Gain", value: "+\(formatElevation(stats.gain))", color: SaplingColors.brand)
-                ElevMiniStat(label: "Loss", value: "-\(formatElevation(stats.loss))", color: SaplingColors.accent)
-                ElevMiniStat(label: "High Point", value: formatElevation(stats.maxElev), color: SaplingColors.ink)
-            }
-        }
-        .padding(14)
-        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-private struct ElevMiniStat: View {
-    let label: String
-    let value: String
-    let color: Color
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Text(value).font(.caption.weight(.semibold)).foregroundStyle(color)
-            Text(label).font(.caption2).foregroundStyle(SaplingColors.bark)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-
-// MARK: - Route Map Preview
-
-private struct RouteMapPreview: View {
-    let coordinates: [CLLocationCoordinate2D]
-
-    private var bounds: CoordinateBBox { boundingBox(for: coordinates) }
-    private var center: CLLocationCoordinate2D { bounds.center }
-    private var zoom: Double { zoomToFit(bounds: bounds) }
-
-    var body: some View {
-        MapView(
-            styleURL: URL(string: "https://tiles.openfreemap.org/styles/liberty")!,
-            camera: .constant(.center(center, zoom: zoom))
-        ) {
-            let src = ShapeSource(identifier: "route-preview") {
-                MLNPolylineFeature(coordinates: coordinates)
-            }
-            LineStyleLayer(identifier: "route-preview-line", source: src)
-                .lineColor(SaplingColors.brandUI)
-                .lineWidth(3)
-                .lineCap(.round)
-                .lineJoin(.round)
-        }
-        .mapControls { LogoView().position(.bottomLeft) }
-    }
-}
-
-// MARK: - Seeds Along Route Section
-
-private struct SeedsAlongRouteSection: View {
-    let seeds: [SeedOnRoute]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Seeds Along Route")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(SaplingColors.bark)
-                Spacer()
-                Text("\(seeds.count)")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(SaplingColors.brand)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(SaplingColors.brand.opacity(0.1), in: Capsule())
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(allSeedTypes, id: \.displayName) { type in
-                        let count = seeds.filter { $0.seed.seedType == type }.count
-                        if count > 0 {
-                            HStack(spacing: 4) {
-                                Image(systemName: type.sfSymbol)
-                                    .font(.caption2)
-                                    .foregroundStyle(type.color)
-                                Text("\(count) \(type.displayName)")
-                                    .font(.caption2.weight(.medium))
-                                    .foregroundStyle(SaplingColors.ink)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(type.color.opacity(0.1), in: Capsule())
-                        }
-                    }
-                }
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(seeds.enumerated()), id: \.element.seed.id) { i, item in
-                    HStack(alignment: .top, spacing: 10) {
-                        Text(formatDistance(item.distanceAlongM))
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(SaplingColors.bark)
-                            .frame(width: 44, alignment: .trailing)
-                            .padding(.top, 5)
-
-                        VStack(spacing: 0) {
-                            ZStack {
-                                Circle()
-                                    .fill(item.seed.seedType.color)
-                                    .frame(width: 28, height: 28)
-                                Image(systemName: item.seed.seedType.sfSymbol)
-                                    .font(.caption)
-                                    .foregroundStyle(.white)
-                            }
-                            if i < seeds.count - 1 {
-                                Rectangle()
-                                    .fill(SaplingColors.bark.opacity(0.2))
-                                    .frame(width: 1.5, height: 28)
-                            }
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(item.seed.title)
-                                .font(.subheadline)
-                                .foregroundStyle(SaplingColors.ink)
-                            if let notes = item.seed.notes, !notes.isEmpty {
-                                Text(notes)
-                                    .font(.caption2)
-                                    .foregroundStyle(SaplingColors.bark)
-                                    .lineLimit(1)
-                            }
-                        }
-                        .padding(.top, 4)
-
-                        Spacer()
-                    }
-                }
-            }
-        }
-        .padding(14)
-        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
-    }
-}
-
-// MARK: - Day Breakdown Section
-
-private struct DayBreakdownSection: View {
-    let campSeeds: [SeedOnRoute]
-    let totalDistanceM: Double
-    let estimatedMinutes: Int
-
-    private var days: Int { max(2, (estimatedMinutes + 479) / 480) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Multi-Day Planning")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(SaplingColors.bark)
-
-            if campSeeds.isEmpty {
-                HStack(spacing: 10) {
-                    Image(systemName: "moon.stars.fill")
-                        .font(.title3)
-                        .foregroundStyle(SaplingColors.accent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("~\(days) days estimated")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(SaplingColors.ink)
-                        Text("Drop camp seeds along the route to plan your nights.")
-                            .font(.caption2)
-                            .foregroundStyle(SaplingColors.bark)
-                    }
-                    Spacer()
-                }
-                .padding(10)
-                .background(SaplingColors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-            } else {
-                VStack(spacing: 8) {
-                    ForEach(Array(daySegments.enumerated()), id: \.offset) { i, seg in
-                        HStack(spacing: 8) {
-                            Text("Day \(i + 1)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(SaplingColors.brand, in: Capsule())
-                            Text(seg.label)
-                                .font(.subheadline)
-                                .foregroundStyle(SaplingColors.ink)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(formatDistance(seg.distanceM))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(SaplingColors.bark)
-                        }
-                    }
-                }
-            }
-        }
-        .padding(14)
-        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
-    }
-
-    private struct DaySegment { let label: String; let distanceM: Double }
-
-    private var daySegments: [DaySegment] {
-        var result: [DaySegment] = []
-        var prevDist = 0.0
-        var checkpoints = campSeeds.map { ($0.seed.title, $0.distanceAlongM) }
-        checkpoints.append(("End", totalDistanceM))
-        for (name, dist) in checkpoints {
-            result.append(DaySegment(label: "→ \(name)", distanceM: dist - prevDist))
-            prevDist = dist
-        }
-        return result
-    }
-}
-
-// MARK: - Date Helper
-
-private func formattedDate(_ iso: String) -> String {
-    let formatter = ISO8601DateFormatter()
-    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    if let date = formatter.date(from: iso) { return formatTripDate(date) }
-    formatter.formatOptions = [.withInternetDateTime]
-    if let date = formatter.date(from: iso) { return formatTripDate(date) }
-    return iso
-}
-
-private func formatTripDate(_ date: Date) -> String {
-    let cal = Calendar.current
-    if cal.isDateInToday(date) {
-        let f = DateFormatter(); f.dateFormat = "h:mm a"
-        return "Today, \(f.string(from: date))"
-    } else if cal.isDateInYesterday(date) {
-        let f = DateFormatter(); f.dateFormat = "h:mm a"
-        return "Yesterday, \(f.string(from: date))"
-    } else {
-        let f = DateFormatter(); f.dateFormat = "MMM d"
-        return f.string(from: date)
     }
 }

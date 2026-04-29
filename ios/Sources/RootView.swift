@@ -4,7 +4,7 @@ import SwiftUI
 /// Root of the app. Owns the tab structure, all shared ViewModels, and any
 /// state that needs to flow between tabs (e.g. displayRoute for "Start Navigation").
 struct RootView: View {
-    enum Tab: Hashable { case map, explore, community }
+    enum Tab: Hashable { case map, myTrips, explore, community }
 
     @State private var selectedTab: Tab = .map
     @State private var viewModel: RecordingViewModel
@@ -49,7 +49,7 @@ struct RootView: View {
             .tabItem { Label("Map", systemImage: "map.fill") }
             .tag(Tab.map)
 
-            ExploreView(
+            MyTripsView(
                 tripListViewModel: tripListViewModel,
                 routeViewModel: routeViewModel,
                 seedViewModel: seedViewModel,
@@ -62,6 +62,17 @@ struct RootView: View {
                 },
                 onStartBuilding: {
                     routeViewModel.startBuilding()
+                    selectedTab = .map
+                }
+            )
+            .tabItem { Label("My Trips", systemImage: "figure.hiking") }
+            .tag(Tab.myTrips)
+
+            ExploreView(
+                seedViewModel: seedViewModel,
+                routeViewModel: routeViewModel,
+                onStartNavigation: { coords in
+                    displayRoute = coords
                     selectedTab = .map
                 }
             )

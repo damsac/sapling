@@ -50,6 +50,7 @@ class RouteBuilderViewModel {
         isRouting = false
         isBuilding = true
     }
+    
 
     func addWaypoint(_ coordinate: CLLocationCoordinate2D) {
         let previous = waypoints.last
@@ -117,6 +118,32 @@ class RouteBuilderViewModel {
         segmentDistances = []
         isRouting = false
         isBuilding = false
+    }
+
+    func saveTrailRoute(name: String, coordinates: [CLLocationCoordinate2D], distanceM: Double, elevations: [Double]?) {
+        let ffiWaypoints: [FfiRouteWaypoint]
+        if let elevs = elevations, elevs.count >= 2, coordinates.count >= 2 {
+            ffiWaypoints = coordinates.enumerated().map { i, coord in
+                let t = Double(i) / Double(coordinates.count - 1)
+                let ei = Int((t * Double(elevs.count - 1)).rounded())
+                let clamped = min(max(ei, 0), elevs.count - 1)
+                let lo = max(0, clamped - 1)
+                let hi = min(elevs.count - 1, clamped + 1)
+                let frac = t * Double(elevs.count - 1) - Double(lo)
+                let elev = lo == hi ? elevs[lo] : elevs[lo] * (1 - frac) + elevs[hi] * frac
+                return FfiRouteWaypoint(latitude: coord.latitude, longitude: coord.longitude, elevation: elev)
+            }
+        } else {
+            ffiWaypoints = coordinates.map {
+                FfiRouteWaypoint(latitude: $0.latitude, longitude: $0.longitude, elevation: nil)
+            }
+        }
+        do {
+            let route = try core.createRoute(name: name, waypoints: ffiWaypoints, distanceM: distanceM)
+            savedRoutes.insert(route, at: 0)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     func loadRoutes() {
