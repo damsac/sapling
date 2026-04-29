@@ -2,7 +2,9 @@ use rusqlite::Connection;
 use rusqlite_migration::{Migrations, M};
 
 use crate::error::SaplingError;
-use crate::models::{CreateSeedInput, Route, RouteWaypoint, Seed, SeedType, TrackPoint, TripSummary};
+use crate::models::{
+    CreateSeedInput, Route, RouteWaypoint, Seed, SeedType, TrackPoint, TripSummary,
+};
 
 /// SQLite-backed persistent store.
 pub struct Store {
@@ -469,11 +471,20 @@ impl Store {
         let mut prev: Option<&TrackPoint> = None;
         for pt in points {
             if let Some(p) = prev {
-                let d = crate::geo::haversine_distance(p.latitude, p.longitude, pt.latitude, pt.longitude);
+                let d = crate::geo::haversine_distance(
+                    p.latitude,
+                    p.longitude,
+                    pt.latitude,
+                    pt.longitude,
+                );
                 distance_m += d;
                 if let (Some(e1), Some(e2)) = (p.elevation, pt.elevation) {
                     let delta = e2 - e1;
-                    if delta > 0.0 { elevation_gain += delta; } else { elevation_loss += -delta; }
+                    if delta > 0.0 {
+                        elevation_gain += delta;
+                    } else {
+                        elevation_loss += -delta;
+                    }
                 }
             }
             prev = Some(pt);
@@ -481,7 +492,9 @@ impl Store {
         let duration_ms = if points.len() >= 2 {
             points.last().map(|l| l.timestamp_ms).unwrap_or(0)
                 - points.first().map(|f| f.timestamp_ms).unwrap_or(0)
-        } else { 0 };
+        } else {
+            0
+        };
 
         // Determine created_at from first point timestamp or now
         let created_at = if let Some(first) = points.first() {
@@ -489,10 +502,17 @@ impl Store {
                 let secs = first.timestamp_ms / 1000;
                 time::OffsetDateTime::from_unix_timestamp(secs)
                     .ok()
-                    .and_then(|dt| dt.format(&time::format_description::well_known::Rfc3339).ok())
+                    .and_then(|dt| {
+                        dt.format(&time::format_description::well_known::Rfc3339)
+                            .ok()
+                    })
                     .unwrap_or_else(|| now.clone())
-            } else { now.clone() }
-        } else { now.clone() };
+            } else {
+                now.clone()
+            }
+        } else {
+            now.clone()
+        };
 
         self.conn.execute(
             "INSERT INTO trips (id, name, distance_m, elevation_gain, elevation_loss, duration_ms, created_at, updated_at)
@@ -545,7 +565,12 @@ impl Store {
 
     // -- Routes --
 
-    pub fn create_route(&self, name: &str, waypoints: &[RouteWaypoint], distance_m: f64) -> Result<Route, SaplingError> {
+    pub fn create_route(
+        &self,
+        name: &str,
+        waypoints: &[RouteWaypoint],
+        distance_m: f64,
+    ) -> Result<Route, SaplingError> {
         let id = uuid::Uuid::now_v7().to_string();
         let now = chrono::Utc::now().to_rfc3339();
         let waypoints_json = serde_json::to_string(waypoints)
@@ -554,7 +579,15 @@ impl Store {
             "INSERT INTO routes (id, name, waypoints, distance_m, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             rusqlite::params![id, name, waypoints_json, distance_m, now, now],
         )?;
-        Ok(Route { id, name: name.to_string(), notes: None, waypoints: waypoints.to_vec(), distance_m, created_at: now.clone(), updated_at: now })
+        Ok(Route {
+            id,
+            name: name.to_string(),
+            notes: None,
+            waypoints: waypoints.to_vec(),
+            distance_m,
+            created_at: now.clone(),
+            updated_at: now,
+        })
     }
 
     pub fn list_routes(&self) -> Result<Vec<Route>, SaplingError> {
@@ -577,7 +610,15 @@ impl Store {
             let (id, name, notes, waypoints_json, distance_m, created_at, updated_at) = row?;
             let waypoints: Vec<RouteWaypoint> = serde_json::from_str(&waypoints_json)
                 .map_err(|e| SaplingError::Database(format!("bad waypoints json: {e}")))?;
-            routes.push(Route { id, name, notes, waypoints, distance_m, created_at, updated_at });
+            routes.push(Route {
+                id,
+                name,
+                notes,
+                waypoints,
+                distance_m,
+                created_at,
+                updated_at,
+            });
         }
         Ok(routes)
     }
@@ -601,7 +642,15 @@ impl Store {
             let (id, name, notes, waypoints_json, distance_m, created_at, updated_at) = row?;
             let waypoints: Vec<RouteWaypoint> = serde_json::from_str(&waypoints_json)
                 .map_err(|e| SaplingError::Database(format!("bad waypoints json: {e}")))?;
-            Ok(Some(Route { id, name, notes, waypoints, distance_m, created_at, updated_at }))
+            Ok(Some(Route {
+                id,
+                name,
+                notes,
+                waypoints,
+                distance_m,
+                created_at,
+                updated_at,
+            }))
         } else {
             Ok(None)
         }
@@ -669,8 +718,13 @@ impl Store {
     }
 
     /// Update a seed's user-editable fields (title, notes, tags).
-    pub fn update_seed(&self, id: &str, input: &crate::models::UpdateSeedInput) -> Result<Seed, SaplingError> {
-        let existing = self.get_seed(id)?
+    pub fn update_seed(
+        &self,
+        id: &str,
+        input: &crate::models::UpdateSeedInput,
+    ) -> Result<Seed, SaplingError> {
+        let existing = self
+            .get_seed(id)?
             .ok_or_else(|| SaplingError::NotFound(format!("seed {id} not found")))?;
         let now = chrono::Utc::now().to_rfc3339();
         let tags_json = serde_json::to_string(&input.tags)

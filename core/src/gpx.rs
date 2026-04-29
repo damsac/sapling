@@ -71,8 +71,13 @@ pub fn import_gpx_from_str(
 pub fn export_trip_gpx(trip: &TripSummary, points: &[TrackPoint], seeds: &[Seed]) -> String {
     let mut xml = String::new();
     xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-    xml.push_str("<gpx version=\"1.1\" creator=\"Sapling\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n");
-    xml.push_str(&format!("  <metadata><name>{}</name></metadata>\n", escape_xml(&trip.name)));
+    xml.push_str(
+        "<gpx version=\"1.1\" creator=\"Sapling\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n",
+    );
+    xml.push_str(&format!(
+        "  <metadata><name>{}</name></metadata>\n",
+        escape_xml(&trip.name)
+    ));
 
     for seed in seeds {
         xml.push_str(&format!(
@@ -90,7 +95,10 @@ pub fn export_trip_gpx(trip: &TripSummary, points: &[TrackPoint], seeds: &[Seed]
         xml.push_str("  </wpt>\n");
     }
 
-    xml.push_str(&format!("  <trk><name>{}</name><trkseg>\n", escape_xml(&trip.name)));
+    xml.push_str(&format!(
+        "  <trk><name>{}</name><trkseg>\n",
+        escape_xml(&trip.name)
+    ));
     for pt in points {
         xml.push_str(&format!(
             "    <trkpt lat=\"{}\" lon=\"{}\">\n",
@@ -101,7 +109,8 @@ pub fn export_trip_gpx(trip: &TripSummary, points: &[TrackPoint], seeds: &[Seed]
         }
         if pt.timestamp_ms > 0 {
             let secs = pt.timestamp_ms / 1000;
-            let dt = time::OffsetDateTime::from_unix_timestamp(secs).unwrap_or(time::OffsetDateTime::UNIX_EPOCH);
+            let dt = time::OffsetDateTime::from_unix_timestamp(secs)
+                .unwrap_or(time::OffsetDateTime::UNIX_EPOCH);
             let fmt = time::format_description::well_known::Rfc3339;
             if let Ok(s) = dt.format(&fmt) {
                 xml.push_str(&format!("      <time>{s}</time>\n"));
