@@ -6,6 +6,11 @@
 *.db-wal
 *.db-shm
 
+# Apple secrets — never commit
+*.p8
+*.p12
+*.mobileprovision
+
 # Nix
 result
 .direnv
