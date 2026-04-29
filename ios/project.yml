@@ -61,6 +61,11 @@ targets:
         NSLocationAlwaysAndWhenInUseUsageDescription: Sapling needs background location access to keep recording your trail when the app is in your pocket.
         UIBackgroundModes:
           - location
+        # Sapling only uses HTTPS (Apple's standard SSL/TLS) for map tile and
+        # API calls — no custom or proprietary encryption. Declaring this in
+        # Info.plist lets App Store Connect skip the encryption-compliance
+        # prompt on every build.
+        ITSAppUsesNonExemptEncryption: false
   SaplingTests:
     type: bundle.unit-test
     platform: iOS
