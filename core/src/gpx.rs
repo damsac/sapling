@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use crate::error::SaplingError;
-use crate::models::{Seed, TrackPoint, TripSummary};
+use crate::models::{RouteWaypoint, Seed, TrackPoint, TripSummary};
 
 /// Extract track points and waypoints from parsed GPX data.
 fn parse_gpx_data(gpx_data: &gpx::Gpx) -> (Vec<TrackPoint>, Vec<gpx::Waypoint>) {
@@ -119,6 +119,33 @@ pub fn export_trip_gpx(trip: &TripSummary, points: &[TrackPoint], seeds: &[Seed]
         xml.push_str("    </trkpt>\n");
     }
     xml.push_str("  </trkseg></trk>\n");
+    xml.push_str("</gpx>\n");
+    xml
+}
+
+/// Export a planned route as a GPX XML string using the `<rte>/<rtept>` element.
+pub fn export_route_gpx(name: &str, waypoints: &[RouteWaypoint]) -> String {
+    let mut xml = String::new();
+    xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    xml.push_str(
+        "<gpx version=\"1.1\" creator=\"Sapling\" xmlns=\"http://www.topografix.com/GPX/1/1\">\n",
+    );
+    xml.push_str(&format!(
+        "  <metadata><name>{}</name></metadata>\n",
+        escape_xml(name)
+    ));
+    xml.push_str(&format!("  <rte><name>{}</name>\n", escape_xml(name)));
+    for pt in waypoints {
+        xml.push_str(&format!(
+            "    <rtept lat=\"{}\" lon=\"{}\">\n",
+            pt.latitude, pt.longitude
+        ));
+        if let Some(ele) = pt.elevation {
+            xml.push_str(&format!("      <ele>{ele}</ele>\n"));
+        }
+        xml.push_str("    </rtept>\n");
+    }
+    xml.push_str("  </rte>\n");
     xml.push_str("</gpx>\n");
     xml
 }

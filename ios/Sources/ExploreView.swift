@@ -7,6 +7,8 @@ struct ExploreView: View {
     let onStartNavigation: ([CLLocationCoordinate2D]) -> Void
 
     @State private var searchVM = TrailSearchViewModel()
+    @State private var searchText = ""
+    @State private var expandedCategories: Set<TrailCategory> = []
 
     var body: some View {
         NavigationStack {
@@ -19,7 +21,7 @@ struct ExploreView: View {
                         errorCard(error)
                     } else if !searchVM.results.isEmpty {
                         resultsList
-                    } else if searchVM.searchText.isEmpty {
+                    } else if searchText.isEmpty {
                         discoveryStubs
                     } else {
                         emptyResults
@@ -41,14 +43,15 @@ struct ExploreView: View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(SaplingColors.bark)
-            TextField("Search trails, parks, peaks…", text: $searchVM.searchText)
+            TextField("Search trails, parks, peaks…", text: $searchText)
                 .font(.subheadline)
                 .foregroundStyle(SaplingColors.ink)
                 .autocorrectionDisabled()
-                .onSubmit { searchVM.search() }
-            if !searchVM.searchText.isEmpty {
+                .onChange(of: searchText) { _, newVal in searchVM.scheduleSearch(query: newVal) }
+                .onSubmit { searchVM.search(query: searchText) }
+            if !searchText.isEmpty {
                 Button {
-                    searchVM.searchText = ""
+                    searchText = ""
                     searchVM.clearResults()
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -121,13 +124,41 @@ struct ExploreView: View {
     // MARK: - Results List
 
     private var resultsList: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 24) {
             Text("\(searchVM.results.count) TRAIL\(searchVM.results.count == 1 ? "" : "S") FOUND")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SaplingColors.bark)
                 .kerning(0.8)
 
-            ForEach(searchVM.results) { trail in
+            ForEach(TrailCategory.allCases, id: \.self) { category in
+                let group = searchVM.results.filter { $0.category == category }
+                if !group.isEmpty {
+                    categorySection(category, trails: group)
+                }
+            }
+        }
+    }
+
+    private func categorySection(_ category: TrailCategory, trails: [TrailResult]) -> some View {
+        let isExpanded = expandedCategories.contains(category)
+        let visible = isExpanded ? trails : Array(trails.prefix(10))
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: category.icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SaplingColors.brand)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(category.rawValue.uppercased())
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SaplingColors.bark)
+                        .kerning(0.8)
+                    Text(category.subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(SaplingColors.bark.opacity(0.6))
+                }
+            }
+
+            ForEach(visible) { trail in
                 NavigationLink {
                     TrailDetailView(
                         trail: trail,
@@ -139,6 +170,23 @@ struct ExploreView: View {
                     TrailResultRow(trail: trail)
                 }
                 .buttonStyle(.plain)
+            }
+
+            if trails.count > 10 {
+                Button {
+                    if isExpanded {
+                        expandedCategories.remove(category)
+                    } else {
+                        expandedCategories.insert(category)
+                    }
+                } label: {
+                    Text(isExpanded ? "Show less" : "View \(trails.count - 10) more…")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SaplingColors.brand)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 10))
+                }
             }
         }
     }

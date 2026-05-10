@@ -146,6 +146,14 @@ class RouteBuilderViewModel {
         }
     }
 
+    func exportGpx(route: FfiRoute) -> URL? {
+        guard let gpxString = try? core.exportRouteGpx(routeId: route.id) else { return nil }
+        let safeName = route.name.replacingOccurrences(of: "/", with: "-")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(safeName).gpx")
+        try? gpxString.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
     func loadRoutes() {
         do { savedRoutes = try core.listRoutes() }
         catch { lastError = error.localizedDescription }

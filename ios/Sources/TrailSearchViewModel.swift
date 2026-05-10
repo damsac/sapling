@@ -3,7 +3,6 @@ import Foundation
 
 @Observable
 class TrailSearchViewModel {
-    var searchText: String = ""
     var results: [TrailResult] = []
     var recommendedTrails: [TrailResult] = []
     var isSearching: Bool = false
@@ -11,18 +10,42 @@ class TrailSearchViewModel {
     var searchError: String? = nil
 
     private let service = TrailSearchService.shared
+    private var searchTask: Task<Void, Never>?
+    private var debounceTask: Task<Void, Never>?
 
-    func search() {
-        guard !searchText.trimmingCharacters(in: .whitespaces).isEmpty else {
+    // Called on every keystroke — debounces before firing
+    func scheduleSearch(query: String) {
+        debounceTask?.cancel()
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
+            searchTask?.cancel()
+            isSearching = false
             results = []
+            searchError = nil
             return
         }
+        debounceTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            search(query: trimmed)
+        }
+    }
+
+    func search(query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        searchTask?.cancel()
         isSearching = true
         searchError = nil
-        Task { @MainActor in
+        searchTask = Task { @MainActor in
             do {
-                results = try await service.search(query: searchText)
+                let r = try await service.search(query: trimmed)
+                guard !Task.isCancelled else { return }
+                results = r
+            } catch is CancellationError {
+                return
             } catch {
+                guard !Task.isCancelled else { return }
                 searchError = error.localizedDescription
             }
             isSearching = false

@@ -522,6 +522,8 @@ public protocol SaplingCoreProtocol: AnyObject, Sendable {
     
     func deleteTrip(id: String) throws 
     
+    func exportRouteGpx(routeId: String) throws  -> String
+    
     func exportTripGpx(tripId: String) throws  -> String
     
     func getRoute(id: String) throws  -> FfiRoute?
@@ -667,6 +669,14 @@ open func deleteTrip(id: String)throws   {try rustCallWithError(FfiConverterType
         FfiConverterString.lower(id),$0
     )
 }
+}
+    
+open func exportRouteGpx(routeId: String)throws  -> String  {
+    return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeFfiError_lift) {
+    uniffi_sapling_fn_method_saplingcore_export_route_gpx(self.uniffiClonePointer(),
+        FfiConverterString.lower(routeId),$0
+    )
+})
 }
     
 open func exportTripGpx(tripId: String)throws  -> String  {
@@ -2364,6 +2374,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_delete_trip() != 51618) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_sapling_checksum_method_saplingcore_export_route_gpx() != 13771) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_sapling_checksum_method_saplingcore_export_trip_gpx() != 4610) {

@@ -15,6 +15,8 @@ struct MyTripsView: View {
 
     @State private var selectedRoute: FfiRoute? = nil
     @State private var showImportPicker = false
+    @State private var exportUrl: URL? = nil
+    @State private var showShareSheet = false
 
     var body: some View {
         NavigationStack {
@@ -55,7 +57,9 @@ struct MyTripsView: View {
                 }
             }
         }
-        .sheet(item: $selectedRoute) { route in
+        .sheet(item: $selectedRoute, onDismiss: {
+            if exportUrl != nil { showShareSheet = true }
+        }) { route in
             RouteDetailSheet(
                 route: route,
                 seeds: seedViewModel.seeds,
@@ -68,9 +72,20 @@ struct MyTripsView: View {
                 onRename: { name in
                     routeViewModel.renameRoute(route.id, name: name)
                     selectedRoute = nil
+                },
+                onExportGpx: {
+                    if let url = routeViewModel.exportGpx(route: route) {
+                        exportUrl = url
+                        selectedRoute = nil
+                    }
                 }
             )
             .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $showShareSheet, onDismiss: { exportUrl = nil }) {
+            if let url = exportUrl {
+                ShareSheet(url: url)
+            }
         }
         .onAppear {
             tripListViewModel.loadTrips()
@@ -250,6 +265,7 @@ struct RouteDetailSheet: View {
     let onStartBuilding: () -> Void
     let onDelete: () -> Void
     let onRename: (String) -> Void
+    let onExportGpx: () -> Void
 
     @State private var showRenameAlert = false
     @State private var renameText = ""
@@ -379,6 +395,17 @@ struct RouteDetailSheet: View {
                                 showRenameAlert = true
                             } label: {
                                 Label("Rename", systemImage: "pencil")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(SaplingColors.ink)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
+                            }
+
+                            Button {
+                                onExportGpx()
+                            } label: {
+                                Label("Export GPX", systemImage: "square.and.arrow.up")
                                     .font(.subheadline.weight(.medium))
                                     .foregroundStyle(SaplingColors.ink)
                                     .frame(maxWidth: .infinity)
