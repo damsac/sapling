@@ -14,7 +14,14 @@ struct OfflinePackMetadata: Codable {
 
 // MARK: - Pack Info (observable view data)
 
-struct OfflinePackInfo: Identifiable {
+struct OfflinePackInfo: Identifiable, Equatable {
+    static func == (lhs: OfflinePackInfo, rhs: OfflinePackInfo) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.resourcesCompleted == rhs.resourcesCompleted &&
+        lhs.resourcesExpected == rhs.resourcesExpected &&
+        lhs.bytesCompleted == rhs.bytesCompleted
+    }
+
     let id: String
     let name: String
     let createdAt: Date
@@ -77,12 +84,25 @@ class OfflineMapManager {
 
     // MARK: - Download
 
+    @discardableResult
+    func downloadRegion(
+        name: String,
+        coordinates: [CLLocationCoordinate2D],
+        minZoom: Double = 10,
+        maxZoom: Double = 16
+    ) -> String? {
+        guard let bounds = OfflineMapManager.bounds(for: coordinates) else { return nil }
+        return downloadRegion(name: name, bounds: bounds, minZoom: minZoom, maxZoom: maxZoom)
+    }
+
+    @discardableResult
     func downloadRegion(
         name: String,
         bounds: MLNCoordinateBounds,
         minZoom: Double = 10,
-        maxZoom: Double = 14
-    ) {
+        maxZoom: Double = 16
+    ) -> String {
+        let id = UUID().uuidString
         let region = MLNTilePyramidOfflineRegion(
             styleURL: styleURL,
             bounds: bounds,
@@ -91,18 +111,18 @@ class OfflineMapManager {
         )
 
         let metadata = OfflinePackMetadata(
-            id: UUID().uuidString,
+            id: id,
             name: name,
             createdAt: Date(),
             minZoom: minZoom,
             maxZoom: maxZoom
         )
 
-        guard let context = try? JSONEncoder().encode(metadata) else { return }
+        guard let context = try? JSONEncoder().encode(metadata) else { return id }
 
         isDownloading = true
         activeDownloadProgress = 0
-        activeDownloadId = metadata.id
+        activeDownloadId = id
 
         MLNOfflineStorage.shared.addPack(for: region, withContext: context) { [weak self] pack, error in
             if let error {
@@ -118,6 +138,7 @@ class OfflineMapManager {
                 self?.refreshPacks()
             }
         }
+        return id
     }
 
     // MARK: - Pack Management
@@ -179,14 +200,51 @@ class OfflineMapManager {
         }
     }
 
+    // MARK: - Region Queries
+
+    func isRegionDownloaded(coordinates: [CLLocationCoordinate2D]) -> Bool {
+        downloadedPack(for: coordinates) != nil
+    }
+
+    func downloadedPack(for coordinates: [CLLocationCoordinate2D]) -> OfflinePackInfo? {
+        guard let needed = OfflineMapManager.bounds(for: coordinates, paddingFraction: 0.05) else { return nil }
+        return packs.first { pack in
+            pack.isComplete && Self.covers(pack.bounds, needed)
+        }
+    }
+
+    private static func covers(_ outer: MLNCoordinateBounds, _ inner: MLNCoordinateBounds) -> Bool {
+        outer.sw.latitude <= inner.sw.latitude &&
+        outer.sw.longitude <= inner.sw.longitude &&
+        outer.ne.latitude >= inner.ne.latitude &&
+        outer.ne.longitude >= inner.ne.longitude
+    }
+
     // MARK: - Size Estimation
 
     /// Estimate download size for a bounding box at the given zoom range.
     /// Uses average wilderness vector tile size (~8 KB) plus ~2 MB for style resources.
+    static func bounds(
+        for coordinates: [CLLocationCoordinate2D],
+        paddingFraction: Double = 0.1
+    ) -> MLNCoordinateBounds? {
+        guard !coordinates.isEmpty else { return nil }
+        let lats = coordinates.map(\.latitude)
+        let lons = coordinates.map(\.longitude)
+        guard let minLat = lats.min(), let maxLat = lats.max(),
+              let minLon = lons.min(), let maxLon = lons.max() else { return nil }
+        let latPad = max((maxLat - minLat) * paddingFraction, 0.01)
+        let lonPad = max((maxLon - minLon) * paddingFraction, 0.01)
+        return MLNCoordinateBounds(
+            sw: CLLocationCoordinate2D(latitude: minLat - latPad, longitude: minLon - lonPad),
+            ne: CLLocationCoordinate2D(latitude: maxLat + latPad, longitude: maxLon + lonPad)
+        )
+    }
+
     static func estimateSize(
         bounds: MLNCoordinateBounds,
         minZoom: Double = 10,
-        maxZoom: Double = 14
+        maxZoom: Double = 16
     ) -> (tileCount: Int, bytes: Int) {
         let avgTileBytes = 8_000 // ~8 KB per tile for wilderness areas
         let styleOverhead = 2_000_000 // ~2 MB for style JSON, sprites, glyphs

@@ -45,7 +45,7 @@ struct OfflineMapSheet: View {
 
                                 Spacer()
 
-                                Text("\(est.tileCount) tiles, z10-z14")
+                                Text("\(est.tileCount) tiles, z10-z16")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }

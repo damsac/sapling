@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     enum Tab: Hashable { case map, myTrips, explore, community }
 
+    @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @State private var selectedTab: Tab = .map
     @State private var viewModel: RecordingViewModel
     @State private var seedViewModel: SeedViewModel
@@ -49,6 +50,17 @@ struct RootView: View {
             .tabItem { Label("Map", systemImage: "map.fill") }
             .tag(Tab.map)
 
+            ExploreView(
+                seedViewModel: seedViewModel,
+                routeViewModel: routeViewModel,
+                onStartNavigation: { coords in
+                    displayRoute = coords
+                    selectedTab = .map
+                }
+            )
+            .tabItem { Label("Explore", systemImage: "magnifyingglass") }
+            .tag(Tab.explore)
+
             MyTripsView(
                 tripListViewModel: tripListViewModel,
                 routeViewModel: routeViewModel,
@@ -68,23 +80,18 @@ struct RootView: View {
             .tabItem { Label("My Trips", systemImage: "figure.hiking") }
             .tag(Tab.myTrips)
 
-            ExploreView(
-                seedViewModel: seedViewModel,
-                routeViewModel: routeViewModel,
-                onStartNavigation: { coords in
-                    displayRoute = coords
-                    selectedTab = .map
-                }
-            )
-            .tabItem { Label("Explore", systemImage: "magnifyingglass") }
-            .tag(Tab.explore)
-
             CommunityView()
                 .tabItem { Label("Community", systemImage: "leaf.fill") }
                 .tag(Tab.community)
         }
         .tint(SaplingColors.brand)
         .fontDesign(.rounded)
+        .fullScreenCover(isPresented: Binding(
+            get: { !hasSeenOnboarding },
+            set: { _ in }
+        )) {
+            OnboardingView()
+        }
         .alert("Database Error", isPresented: Binding(
             get: { initError != nil },
             set: { if !$0 { initError = nil } }

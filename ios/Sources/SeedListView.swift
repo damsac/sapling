@@ -104,7 +104,7 @@ struct SeedListView: View {
                 .font(.title3)
                 .fontWeight(.semibold)
 
-            Text("Long-press the map to drop a seed, or start recording to drop one at your location.")
+            Text("Tap the leaf button on the map to drop a seed at your location.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

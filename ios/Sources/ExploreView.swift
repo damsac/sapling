@@ -35,6 +35,23 @@ struct ExploreView: View {
             .navigationTitle("Explore")
             .navigationBarTitleDisplayMode(.large)
         }
+        .task { await loadNearbyIfAuthorized() }
+    }
+
+    private func loadNearbyIfAuthorized() async {
+        guard searchVM.recommendedTrails.isEmpty && !searchVM.isLoadingRecommendations else { return }
+        let status = LocationProvider.authorizationStatus
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else { return }
+        do {
+            for try await update in CLLocationUpdate.liveUpdates() {
+                guard let loc = update.location,
+                      loc.horizontalAccuracy >= 0,
+                      loc.horizontalAccuracy < 200
+                else { continue }
+                searchVM.loadRecommendations(near: loc.coordinate)
+                break
+            }
+        } catch {}
     }
 
     // MARK: - Search Bar
@@ -124,7 +141,7 @@ struct ExploreView: View {
     // MARK: - Results List
 
     private var resultsList: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        LazyVStack(alignment: .leading, spacing: 24) {
             Text("\(searchVM.results.count) TRAIL\(searchVM.results.count == 1 ? "" : "S") FOUND")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(SaplingColors.bark)
@@ -191,32 +208,82 @@ struct ExploreView: View {
         }
     }
 
-    // MARK: - Discovery Stubs
+    // MARK: - Discovery
 
     private var discoveryStubs: some View {
         VStack(alignment: .leading, spacing: 24) {
-            discoverySection(
-                "NEAR YOU",
-                icon: "location.fill",
-                message: "Discover trails near your current location.",
-                hint: "Search a place name to explore nearby routes."
-            )
-            discoverySection(
+            nearYouSection
+            comingSoonSection(
                 "TRENDING",
                 icon: "chart.line.uptrend.xyaxis",
                 message: "Popular routes from the Sapling community.",
-                hint: "Coming in Phase 2"
+                hint: "Coming in Phase 3"
             )
-            discoverySection(
+            comingSoonSection(
                 "CURATED LISTS",
                 icon: "list.star",
                 message: "Best wildflower trails, peak-baggers, and more.",
-                hint: "Coming in Phase 2"
+                hint: "Coming in Phase 3"
             )
         }
     }
 
-    private func discoverySection(_ title: String, icon: String, message: String, hint: String) -> some View {
+    private var nearYouSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "location.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SaplingColors.brand)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("NEAR YOU")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SaplingColors.bark)
+                        .kerning(0.8)
+                    Text("Trails within 40 km")
+                        .font(.caption2)
+                        .foregroundStyle(SaplingColors.bark.opacity(0.6))
+                }
+            }
+
+            if searchVM.isLoadingRecommendations {
+                HStack(spacing: 12) {
+                    ProgressView()
+                    Text("Finding trails near you…")
+                        .font(.subheadline)
+                        .foregroundStyle(SaplingColors.bark)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+            } else if searchVM.recommendedTrails.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.title2)
+                        .foregroundStyle(SaplingColors.bark.opacity(0.35))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Search to explore")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(SaplingColors.ink)
+                        Text("Type a trail name or place above to get started.")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.bark.opacity(0.55))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+            } else {
+                ForEach(TrailCategory.allCases, id: \.self) { category in
+                    let group = searchVM.recommendedTrails.filter { $0.category == category }
+                    if !group.isEmpty {
+                        categorySection(category, trails: group)
+                    }
+                }
+            }
+        }
+    }
+
+    private func comingSoonSection(_ title: String, icon: String, message: String, hint: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.caption.weight(.semibold))

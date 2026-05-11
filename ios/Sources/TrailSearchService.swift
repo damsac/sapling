@@ -81,8 +81,10 @@ actor TrailSearchService {
 
     func fetchTrails(bbox: (minLat: Double, minLon: Double, maxLat: Double, maxLon: Double)) async throws -> [TrailResult] {
         let b = "\(bbox.minLat),\(bbox.minLon),\(bbox.maxLat),\(bbox.maxLon)"
+        // out body;>;out skel qt resolves ALL member way nodes regardless of bbox —
+        // fixes parks like Yosemite where relation members extend beyond the search area.
         let q = """
-        [out:json][timeout:30];
+        [out:json][timeout:45];
         (
           relation["route"="hiking"]["name"](\(b));
           relation["route"="foot"]["name"](\(b));
@@ -91,7 +93,9 @@ actor TrailSearchService {
           relation["type"="route"]["route"~"hiking|foot|walking|trail"]["name"](\(b));
           way["highway"~"path|footway|track"]["name"](\(b));
         );
-        out geom;
+        out body;
+        >;
+        out skel qt;
         """
         return try await runOverpassQuery(q, limit: 120)
     }
@@ -129,6 +133,34 @@ actor TrailSearchService {
               let elements = json["elements"] as? [[String: Any]]
         else { return [] }
 
+        // Pass 1: node id → coordinate (from out skel qt nodes)
+        var nodeCoords: [Int: CLLocationCoordinate2D] = [:]
+        for el in elements where (el["type"] as? String) == "node" {
+            guard let id = el["id"] as? Int,
+                  let lat = el["lat"] as? Double,
+                  let lon = el["lon"] as? Double
+            else { continue }
+            nodeCoords[id] = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        }
+
+        // Pass 2: way id → coordinates. Handles both out geom (inline geometry key)
+        // and out body;>; (nodes array resolved via nodeCoords).
+        var wayGeom: [Int: [CLLocationCoordinate2D]] = [:]
+        for el in elements where (el["type"] as? String) == "way" {
+            guard let id = el["id"] as? Int else { continue }
+            var coords: [CLLocationCoordinate2D] = []
+            if let geometry = el["geometry"] as? [[String: Any]] {
+                for pt in geometry {
+                    if let lat = pt["lat"] as? Double, let lon = pt["lon"] as? Double {
+                        coords.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                    }
+                }
+            } else if let nodes = el["nodes"] as? [Int] {
+                coords = nodes.compactMap { nodeCoords[$0] }
+            }
+            if coords.count >= 2 { wayGeom[id] = coords }
+        }
+
         struct WayAcc {
             var id: String
             var segments: [[CLLocationCoordinate2D]]
@@ -165,22 +197,12 @@ actor TrailSearchService {
             }
 
             if type == "way" {
-                var seg: [CLLocationCoordinate2D] = []
-                if let geometry = element["geometry"] as? [[String: Any]] {
-                    for pt in geometry {
-                        if let lat = pt["lat"] as? Double, let lon = pt["lon"] as? Double {
-                            seg.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
-                        }
-                    }
-                }
-                guard seg.count >= 2 else { continue }
+                guard let id = element["id"] as? Int,
+                      let seg = wayGeom[id]
+                else { continue }
 
                 let segDist = taggedDistM > 0 ? taggedDistM : haversineDistance(coordinates: seg)
-                let elemId = element["id"].flatMap { v -> String? in
-                    if let i = v as? Int { return "way/\(i)" }
-                    if let d = v as? Double { return "way/\(Int(d))" }
-                    return nil
-                } ?? "way/unknown"
+                let elemId = "way/\(id)"
 
                 if wayAccByName[name] == nil {
                     wayOrder.append(name)
@@ -195,18 +217,21 @@ actor TrailSearchService {
                 }
 
             } else {
-                // Collect member way segments, then order them geographically
+                // Collect member way segments. Try inline geometry first (out geom compat),
+                // then fall back to the wayGeom lookup populated by the pre-pass.
                 var segments: [[CLLocationCoordinate2D]] = []
                 if let members = element["members"] as? [[String: Any]] {
                     for member in members {
-                        guard (member["type"] as? String) == "way",
-                              let geometry = member["geometry"] as? [[String: Any]]
-                        else { continue }
+                        guard (member["type"] as? String) == "way" else { continue }
                         var seg: [CLLocationCoordinate2D] = []
-                        for pt in geometry {
-                            if let lat = pt["lat"] as? Double, let lon = pt["lon"] as? Double {
-                                seg.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                        if let geometry = member["geometry"] as? [[String: Any]] {
+                            for pt in geometry {
+                                if let lat = pt["lat"] as? Double, let lon = pt["lon"] as? Double {
+                                    seg.append(CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                                }
                             }
+                        } else if let ref = member["ref"] as? Int, let coords = wayGeom[ref] {
+                            seg = coords
                         }
                         if seg.count >= 2 { segments.append(seg) }
                     }
@@ -238,8 +263,8 @@ actor TrailSearchService {
             }
         }
 
-        // Emit stitched ways (ordered) where no relation covers the same name.
-        // Require 1.5 km total so lone short fragments are dropped.
+        // Emit stitched ways where no relation covers the same name. 1.5 km minimum
+        // keeps lone short fragments out while still catching real trails.
         for name in wayOrder {
             guard seenByName[name] == nil, let acc = wayAccByName[name] else { continue }
             guard acc.distanceM >= 1500, acc.distanceM <= 300_000 else { continue }

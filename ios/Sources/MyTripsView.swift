@@ -17,6 +17,7 @@ struct MyTripsView: View {
     @State private var showImportPicker = false
     @State private var exportUrl: URL? = nil
     @State private var showShareSheet = false
+    private let offlineManager = OfflineMapManager.shared
 
     var body: some View {
         NavigationStack {
@@ -141,7 +142,8 @@ struct MyTripsView: View {
                     Button {
                         selectedRoute = route
                     } label: {
-                        RouteCard(route: route)
+                        let coords = route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+                        RouteCard(route: route, isDownloaded: offlineManager.isRegionDownloaded(coordinates: coords))
                     }
                     .buttonStyle(.plain)
                 }
@@ -223,6 +225,7 @@ private struct TripCard: View {
 
 private struct RouteCard: View {
     let route: FfiRoute
+    let isDownloaded: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -239,9 +242,16 @@ private struct RouteCard: View {
                 Text(route.name)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(SaplingColors.ink)
-                Text(formatDistance(route.distanceM))
-                    .font(.caption2)
-                    .foregroundStyle(SaplingColors.bark)
+                HStack(spacing: 5) {
+                    Text(formatDistance(route.distanceM))
+                        .font(.caption2)
+                        .foregroundStyle(SaplingColors.bark)
+                    if isDownloaded {
+                        Text("· Offline ready")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(SaplingColors.brand)
+                    }
+                }
             }
 
             Spacer()
@@ -269,7 +279,12 @@ struct RouteDetailSheet: View {
 
     @State private var showRenameAlert = false
     @State private var renameText = ""
+    @State private var offlineState: OfflineState = .idle
+    @State private var trackingPackId: String? = nil
+    private let offlineManager = OfflineMapManager.shared
     @Environment(\.dismiss) private var dismiss
+
+    private enum OfflineState { case idle, inProgress, done }
 
     private var routeCoordinates: [CLLocationCoordinate2D] {
         route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
@@ -289,6 +304,15 @@ struct RouteDetailSheet: View {
             totalDistanceM: route.distanceM,
             estimatedMinutes: estimatedMinutes
         )
+    }
+
+    private var isDownloaded: Bool {
+        offlineState == .done || offlineManager.isRegionDownloaded(coordinates: routeCoordinates)
+    }
+
+    private var downloadEstimate: (tileCount: Int, bytes: Int)? {
+        guard let bounds = OfflineMapManager.bounds(for: routeCoordinates) else { return nil }
+        return OfflineMapManager.estimateSize(bounds: bounds)
     }
 
     var body: some View {
@@ -389,6 +413,63 @@ struct RouteDetailSheet: View {
                                 .background(SaplingColors.brand, in: RoundedRectangle(cornerRadius: 14))
                         }
 
+                        if !routeCoordinates.isEmpty {
+                            if offlineState == .inProgress {
+                                VStack(spacing: 6) {
+                                    ProgressView(value: offlineManager.activeDownloadProgress)
+                                        .tint(SaplingColors.brand)
+                                    Text("\(Int(offlineManager.activeDownloadProgress * 100))% downloaded")
+                                        .font(.caption)
+                                        .foregroundStyle(SaplingColors.bark)
+                                }
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 12)
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14)
+                                        .stroke(SaplingColors.bark.opacity(0.2), lineWidth: 1.5)
+                                )
+                            } else {
+                                VStack(spacing: 5) {
+                                    Button {
+                                        if let id = offlineManager.downloadRegion(name: route.name, coordinates: routeCoordinates) {
+                                            offlineState = .inProgress
+                                            trackingPackId = id
+                                        }
+                                    } label: {
+                                        Label(
+                                            isDownloaded ? "Downloaded" : "Download for Offline",
+                                            systemImage: isDownloaded ? "checkmark.circle.fill" : "arrow.down.to.line.circle"
+                                        )
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(isDownloaded ? SaplingColors.brand : SaplingColors.bark)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 14)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .stroke(
+                                                    isDownloaded ? SaplingColors.brand.opacity(0.5) : SaplingColors.bark.opacity(0.25),
+                                                    lineWidth: 1.5
+                                                )
+                                        )
+                                    }
+                                    .disabled(isDownloaded)
+
+                                    if isDownloaded {
+                                        if let pack = offlineManager.downloadedPack(for: routeCoordinates) {
+                                            Text("z\(Int(pack.minZoom))–\(Int(pack.maxZoom)) · \(pack.formattedSize) saved")
+                                                .font(.caption2)
+                                                .foregroundStyle(SaplingColors.brand.opacity(0.8))
+                                        }
+                                    } else if let est = downloadEstimate {
+                                        Text("~\(OfflineMapManager.formatEstimatedSize(bytes: est.bytes)) · z10–z16")
+                                            .font(.caption2)
+                                            .foregroundStyle(SaplingColors.bark.opacity(0.6))
+                                    }
+                                }
+                            }
+                        }
+
                         HStack(spacing: 10) {
                             Button {
                                 renameText = route.name
@@ -440,6 +521,12 @@ struct RouteDetailSheet: View {
                 dismiss()
             }
             Button("Cancel", role: .cancel) { }
+        }
+        .onChange(of: offlineManager.packs) { _, packs in
+            guard offlineState == .inProgress, let id = trackingPackId else { return }
+            if packs.first(where: { $0.id == id })?.isComplete == true {
+                offlineState = .done
+            }
         }
     }
 }
