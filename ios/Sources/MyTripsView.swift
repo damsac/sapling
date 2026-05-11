@@ -15,8 +15,8 @@ struct MyTripsView: View {
 
     @State private var selectedRoute: FfiRoute? = nil
     @State private var showImportPicker = false
-    @State private var exportUrl: URL? = nil
-    @State private var showShareSheet = false
+    @State private var tripsLimit: Int = 5
+    @State private var routesLimit: Int = 5
     private let offlineManager = OfflineMapManager.shared
 
     var body: some View {
@@ -58,9 +58,7 @@ struct MyTripsView: View {
                 }
             }
         }
-        .sheet(item: $selectedRoute, onDismiss: {
-            if exportUrl != nil { showShareSheet = true }
-        }) { route in
+        .sheet(item: $selectedRoute) { route in
             RouteDetailSheet(
                 route: route,
                 seeds: seedViewModel.seeds,
@@ -74,19 +72,9 @@ struct MyTripsView: View {
                     routeViewModel.renameRoute(route.id, name: name)
                     selectedRoute = nil
                 },
-                onExportGpx: {
-                    if let url = routeViewModel.exportGpx(route: route) {
-                        exportUrl = url
-                        selectedRoute = nil
-                    }
-                }
+                onExportGpx: { routeViewModel.exportGpx(route: route) }
             )
             .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $showShareSheet, onDismiss: { exportUrl = nil }) {
-            if let url = exportUrl {
-                ShareSheet(url: url)
-            }
         }
         .onAppear {
             tripListViewModel.loadTrips()
@@ -111,11 +99,14 @@ struct MyTripsView: View {
             if tripListViewModel.trips.isEmpty {
                 emptyCard(icon: "figure.hiking", message: "No trips yet — hit record and go explore.")
             } else {
-                ForEach(tripListViewModel.trips, id: \.id) { trip in
+                ForEach(tripListViewModel.trips.prefix(tripsLimit), id: \.id) { trip in
                     NavigationLink(value: trip.id) {
                         TripCard(trip: trip)
                     }
                     .buttonStyle(.plain)
+                }
+                if tripListViewModel.trips.count > tripsLimit {
+                    viewMoreButton { tripsLimit += 5 }
                 }
             }
         }
@@ -138,7 +129,7 @@ struct MyTripsView: View {
             if routeViewModel.savedRoutes.isEmpty {
                 emptyCard(icon: "map", message: "No saved routes — build one on the Map tab.")
             } else {
-                ForEach(routeViewModel.savedRoutes, id: \.id) { route in
+                ForEach(routeViewModel.savedRoutes.prefix(routesLimit), id: \.id) { route in
                     Button {
                         selectedRoute = route
                     } label: {
@@ -146,6 +137,9 @@ struct MyTripsView: View {
                         RouteCard(route: route, isDownloaded: offlineManager.isRegionDownloaded(coordinates: coords))
                     }
                     .buttonStyle(.plain)
+                }
+                if routeViewModel.savedRoutes.count > routesLimit {
+                    viewMoreButton { routesLimit += 5 }
                 }
             }
         }
@@ -162,6 +156,22 @@ struct MyTripsView: View {
             Spacer()
             trailing()
         }
+    }
+
+    private func viewMoreButton(_ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text("View More")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(SaplingColors.brand)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(SaplingColors.brand.opacity(0.3), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
     private func emptyCard(icon: String, message: String) -> some View {
@@ -275,12 +285,14 @@ struct RouteDetailSheet: View {
     let onStartBuilding: () -> Void
     let onDelete: () -> Void
     let onRename: (String) -> Void
-    let onExportGpx: () -> Void
+    let onExportGpx: () -> URL?
 
     @State private var showRenameAlert = false
     @State private var renameText = ""
     @State private var offlineState: OfflineState = .idle
     @State private var trackingPackId: String? = nil
+    @State private var shareUrl: URL? = nil
+    @State private var showShareSheet = false
     private let offlineManager = OfflineMapManager.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -484,7 +496,10 @@ struct RouteDetailSheet: View {
                             }
 
                             Button {
-                                onExportGpx()
+                                if let url = onExportGpx() {
+                                    shareUrl = url
+                                    showShareSheet = true
+                                }
                             } label: {
                                 Label("Export GPX", systemImage: "square.and.arrow.up")
                                     .font(.subheadline.weight(.medium))
@@ -513,6 +528,9 @@ struct RouteDetailSheet: View {
             }
         }
         .background(SaplingColors.parchment.ignoresSafeArea())
+        .sheet(isPresented: $showShareSheet, onDismiss: { shareUrl = nil }) {
+            if let url = shareUrl { ShareSheet(url: url) }
+        }
         .alert("Rename Route", isPresented: $showRenameAlert) {
             TextField("Route name", text: $renameText)
             Button("Save") {

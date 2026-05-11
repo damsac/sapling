@@ -92,6 +92,9 @@ struct RootView: View {
         )) {
             OnboardingView()
         }
+        .onChange(of: hasSeenOnboarding) { _, completed in
+            if completed { selectedTab = .explore }
+        }
         .alert("Database Error", isPresented: Binding(
             get: { initError != nil },
             set: { if !$0 { initError = nil } }

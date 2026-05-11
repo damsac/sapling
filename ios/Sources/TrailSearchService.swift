@@ -84,7 +84,7 @@ actor TrailSearchService {
         // out body;>;out skel qt resolves ALL member way nodes regardless of bbox —
         // fixes parks like Yosemite where relation members extend beyond the search area.
         let q = """
-        [out:json][timeout:45];
+        [out:json][timeout:60];
         (
           relation["route"="hiking"]["name"](\(b));
           relation["route"="foot"]["name"](\(b));
@@ -116,16 +116,28 @@ actor TrailSearchService {
     }
 
     private func runOverpassQuery(_ query: String, limit: Int) async throws -> [TrailResult] {
-        guard let bodyData = "data=\(query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")".data(using: .utf8) else {
-            return []
+        guard let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+              let bodyData = "data=\(encoded)".data(using: .utf8) else { return [] }
+
+        let endpoints = [
+            "https://overpass-api.de/api/interpreter",
+            "https://overpass.kumi.systems/api/interpreter",
+        ]
+        var lastError: Error = URLError(.unknown)
+        for endpoint in endpoints {
+            var request = URLRequest(url: URL(string: endpoint)!)
+            request.httpMethod = "POST"
+            request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            request.httpBody = bodyData
+            request.timeoutInterval = 60
+            do {
+                let (data, _) = try await URLSession.shared.data(for: request)
+                return Array(parseTrailElements(data).prefix(limit))
+            } catch {
+                lastError = error
+            }
         }
-        var request = URLRequest(url: URL(string: "https://overpass-api.de/api/interpreter")!)
-        request.httpMethod = "POST"
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.httpBody = bodyData
-        request.timeoutInterval = 45
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return Array(parseTrailElements(data).prefix(limit))
+        throw lastError
     }
 
     private func parseTrailElements(_ data: Data) -> [TrailResult] {

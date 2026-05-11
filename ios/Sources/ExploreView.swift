@@ -8,13 +8,26 @@ struct ExploreView: View {
 
     @State private var searchVM = TrailSearchViewModel()
     @State private var searchText = ""
-    @State private var expandedCategories: Set<TrailCategory> = []
+    @State private var categoryLimits: [TrailCategory: Int] = [:]
+    @State private var distanceFilter: DistanceFilter = .any
+    @State private var difficultyFilter: DifficultyFilter = .any
+
+    private var hasActiveFilters: Bool {
+        distanceFilter != .any || difficultyFilter != .any
+    }
+
+    private func applyFilters(_ trails: [TrailResult]) -> [TrailResult] {
+        trails.filter { distanceFilter.matches($0) && difficultyFilter.matches($0) }
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     searchBar
+                    if !searchVM.results.isEmpty || !searchVM.recommendedTrails.isEmpty {
+                        filterBar
+                    }
                     if searchVM.isSearching {
                         searchingState
                     } else if let error = searchVM.searchError {
@@ -138,27 +151,97 @@ struct ExploreView: View {
         .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
     }
 
+    // MARK: - Filter Bar
+
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(DistanceFilter.allCases, id: \.self) { f in
+                    filterChip(f.rawValue, active: distanceFilter == f) {
+                        distanceFilter = distanceFilter == f ? .any : f
+                        categoryLimits = [:]
+                    }
+                }
+                Divider()
+                    .frame(height: 20)
+                    .padding(.horizontal, 2)
+                ForEach(DifficultyFilter.allCases.dropFirst(), id: \.self) { f in
+                    filterChip(f.rawValue, active: difficultyFilter == f) {
+                        difficultyFilter = difficultyFilter == f ? .any : f
+                        categoryLimits = [:]
+                    }
+                }
+            }
+            .padding(.horizontal, 1)
+        }
+    }
+
+    private func filterChip(_ label: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(active ? .white : SaplingColors.bark)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(active ? SaplingColors.brand : SaplingColors.parchment, in: Capsule())
+                .overlay(Capsule().stroke(active ? Color.clear : SaplingColors.bark.opacity(0.2), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Results List
 
     private var resultsList: some View {
-        LazyVStack(alignment: .leading, spacing: 24) {
-            Text("\(searchVM.results.count) TRAIL\(searchVM.results.count == 1 ? "" : "S") FOUND")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(SaplingColors.bark)
-                .kerning(0.8)
+        let filtered = applyFilters(searchVM.results)
+        return LazyVStack(alignment: .leading, spacing: 24) {
+            HStack {
+                Text("\(filtered.count) TRAIL\(filtered.count == 1 ? "" : "S") FOUND")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SaplingColors.bark)
+                    .kerning(0.8)
+                if hasActiveFilters {
+                    Spacer()
+                    Button("Clear") {
+                        distanceFilter = .any
+                        difficultyFilter = .any
+                        categoryLimits = [:]
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(SaplingColors.brand)
+                }
+            }
 
-            ForEach(TrailCategory.allCases, id: \.self) { category in
-                let group = searchVM.results.filter { $0.category == category }
-                if !group.isEmpty {
-                    categorySection(category, trails: group)
+            if filtered.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "line.3.horizontal.decrease.circle")
+                        .font(.title2)
+                        .foregroundStyle(SaplingColors.bark.opacity(0.4))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("No trails match your filters")
+                            .font(.subheadline)
+                            .foregroundStyle(SaplingColors.bark)
+                        Text("Try adjusting or clearing the filters above.")
+                            .font(.caption2)
+                            .foregroundStyle(SaplingColors.bark.opacity(0.55))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+            } else {
+                ForEach(TrailCategory.allCases, id: \.self) { category in
+                    let group = filtered.filter { $0.category == category }
+                    if !group.isEmpty {
+                        categorySection(category, trails: group)
+                    }
                 }
             }
         }
     }
 
     private func categorySection(_ category: TrailCategory, trails: [TrailResult]) -> some View {
-        let isExpanded = expandedCategories.contains(category)
-        let visible = isExpanded ? trails : Array(trails.prefix(10))
+        let limit = categoryLimits[category] ?? 5
+        let visible = Array(trails.prefix(limit))
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: category.icon)
@@ -189,21 +272,22 @@ struct ExploreView: View {
                 .buttonStyle(.plain)
             }
 
-            if trails.count > 10 {
+            if trails.count > limit {
                 Button {
-                    if isExpanded {
-                        expandedCategories.remove(category)
-                    } else {
-                        expandedCategories.insert(category)
-                    }
+                    categoryLimits[category] = limit + 5
                 } label: {
-                    Text(isExpanded ? "Show less" : "View \(trails.count - 10) more…")
-                        .font(.caption.weight(.semibold))
+                    Text("View More")
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(SaplingColors.brand)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 10))
+                        .padding(.vertical, 12)
+                        .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(SaplingColors.brand.opacity(0.3), lineWidth: 1)
+                        )
                 }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -273,10 +357,25 @@ struct ExploreView: View {
                 .padding(16)
                 .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
             } else {
-                ForEach(TrailCategory.allCases, id: \.self) { category in
-                    let group = searchVM.recommendedTrails.filter { $0.category == category }
-                    if !group.isEmpty {
-                        categorySection(category, trails: group)
+                let filtered = applyFilters(searchVM.recommendedTrails)
+                if filtered.isEmpty && hasActiveFilters {
+                    HStack(spacing: 12) {
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.title2)
+                            .foregroundStyle(SaplingColors.bark.opacity(0.4))
+                        Text("No nearby trails match your filters.")
+                            .font(.subheadline)
+                            .foregroundStyle(SaplingColors.bark)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+                    .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
+                } else {
+                    ForEach(TrailCategory.allCases, id: \.self) { category in
+                        let group = filtered.filter { $0.category == category }
+                        if !group.isEmpty {
+                            categorySection(category, trails: group)
+                        }
                     }
                 }
             }
@@ -373,6 +472,44 @@ private struct TrailResultRow: View {
         case "Moderate": return Color(hue: 0.13, saturation: 0.8, brightness: 0.85)
         case "Hard":     return .orange
         default:         return .red
+        }
+    }
+}
+
+// MARK: - Filter Types
+
+enum DistanceFilter: String, CaseIterable {
+    case any      = "Any Distance"
+    case short    = "< 8 km"
+    case day      = "8–20 km"
+    case longDay  = "20–35 km"
+    case overnight = "35 km+"
+
+    func matches(_ trail: TrailResult) -> Bool {
+        switch self {
+        case .any:      return true
+        case .short:    return trail.category == .shortWalk
+        case .day:      return trail.category == .dayHike
+        case .longDay:  return trail.category == .longDay
+        case .overnight: return trail.category == .overnight
+        }
+    }
+}
+
+enum DifficultyFilter: String, CaseIterable {
+    case any      = "Any"
+    case easy     = "Easy"
+    case moderate = "Moderate"
+    case hard     = "Hard"
+    case epic     = "Epic"
+
+    func matches(_ trail: TrailResult) -> Bool {
+        switch self {
+        case .any:      return true
+        case .easy:     return trail.difficultyLabel == "Easy"
+        case .moderate: return trail.difficultyLabel == "Moderate"
+        case .hard:     return trail.difficultyLabel == "Hard"
+        case .epic:     return trail.difficultyLabel == "Epic"
         }
     }
 }
