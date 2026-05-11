@@ -10,6 +10,7 @@ struct TrailResult: Identifiable {
     let sacScale: String?
     let network: String?
     var elevationProfile: [Double]? = nil
+    var relevanceScore: Double = 0
 }
 
 enum TrailCategory: String, CaseIterable {
