@@ -448,14 +448,24 @@ private struct TrailResultRow: View {
 
             Spacer()
 
-            if let label = trail.difficultyLabel {
-                Text(label)
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(difficultyColor(label), in: Capsule())
-            }
+            let label = trail.computedDifficultyLabel
+            let estimated = trail.isDifficultyEstimated
+            Text(estimated ? "~\(label)" : label)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(estimated ? difficultyColor(label) : .white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(
+                    estimated
+                        ? difficultyColor(label).opacity(0.15)
+                        : difficultyColor(label),
+                    in: Capsule()
+                )
+                .overlay(
+                    estimated
+                        ? Capsule().stroke(difficultyColor(label).opacity(0.4), lineWidth: 1)
+                        : nil
+                )
 
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
@@ -504,12 +514,6 @@ enum DifficultyFilter: String, CaseIterable {
     case epic     = "Epic"
 
     func matches(_ trail: TrailResult) -> Bool {
-        switch self {
-        case .any: return true
-        default:
-            // Trails with no difficulty data pass through — only exclude explicit mismatches
-            guard let label = trail.difficultyLabel else { return true }
-            return label == self.rawValue
-        }
+        self == .any || trail.computedDifficultyLabel == self.rawValue
     }
 }

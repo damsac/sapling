@@ -62,4 +62,26 @@ extension TrailResult {
         default: return nil
         }
     }
+
+    // OSM tag if available, otherwise computed from distance + elevation gain.
+    // Score = distanceKm * 0.1 + gainM * 0.01; falls back to distance-only when
+    // the elevation profile hasn't been fetched yet.
+    var computedDifficultyLabel: String {
+        if let label = difficultyLabel { return label }
+        let km = distanceM / 1000
+        if let profile = elevationProfile, !profile.isEmpty {
+            let score = km * 0.1 + elevationGainM * 0.01
+            if score < 2.0  { return "Easy" }
+            if score < 6.0  { return "Moderate" }
+            if score < 12.0 { return "Hard" }
+            return "Epic"
+        }
+        // Distance-only fallback until elevation is loaded
+        if km < 8  { return "Easy" }
+        if km < 20 { return "Moderate" }
+        if km < 35 { return "Hard" }
+        return "Epic"
+    }
+
+    var isDifficultyEstimated: Bool { difficultyLabel == nil }
 }
