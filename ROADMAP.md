@@ -61,10 +61,13 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - See per-day stats: distance, gain, estimated hours
 - Export the full plan as GPX for use in other tools
 
-**Offline Maps — One-Tap Flow**
-- "Download area for this route" button on any planned or recorded trip
-- Automatically calculates bounding box + buffer and downloads
-- Current manual bounding box flow stays for power users
+**Offline Maps — One-Tap Flow** 🔨
+- ✅ "Download for Offline" button on TrailDetailView with pre-download size estimate
+- ✅ "Save & Download Map" combined action in save alert
+- ✅ "Offline ready" badge on saved routes in My Trips
+- ✅ Download tracked by pack ID — "Downloaded" state persists across dismissals
+- ✅ RouteDetailSheet wired to same offline pattern
+- ⛔ Not started: download from the Map tab for any currently-viewed area via route context
 
 **GPX/KML Export** 🔨 (partially shipped — broken)
 - ✅ Rust core `export_route_gpx` implemented, FFI wired, Swift `exportGpx()` in RouteBuilderViewModel
