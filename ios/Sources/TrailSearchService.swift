@@ -81,23 +81,17 @@ actor TrailSearchService {
 
     func fetchTrails(bbox: (minLat: Double, minLon: Double, maxLat: Double, maxLon: Double)) async throws -> [TrailResult] {
         let b = "\(bbox.minLat),\(bbox.minLon),\(bbox.maxLat),\(bbox.maxLon)"
-        // out body;>;out skel qt resolves ALL member way nodes regardless of bbox —
-        // fixes parks like Yosemite where relation members extend beyond the search area.
+        // out geom embeds member coordinates inline — avoids a separate node-resolution
+        // pass that can hit maxsize limits for large parks like Yosemite.
         let q = """
-        [out:json][timeout:60];
+        [out:json][timeout:60][maxsize:536870912];
         (
-          relation["route"="hiking"]["name"](\(b));
-          relation["route"="foot"]["name"](\(b));
-          relation["route"="mountain_hiking"]["name"](\(b));
-          relation["route"="hiking_route"]["name"](\(b));
-          relation["type"="route"]["route"~"hiking|foot|walking|trail"]["name"](\(b));
+          relation["route"~"hiking|foot|mountain_hiking|walking|trail"]["name"](\(b));
           way["highway"~"path|footway|track"]["name"](\(b));
         );
-        out body;
-        >;
-        out skel qt;
+        out geom;
         """
-        return try await runOverpassQuery(q, limit: 120)
+        return try await runOverpassQuery(q, limit: 200)
     }
 
     func searchByTrailName(_ query: String) async throws -> [TrailResult] {
@@ -105,14 +99,13 @@ actor TrailSearchService {
         // Relations only for US-wide name search — ways are too numerous to regex-scan globally
         let b = "18,-180,72,-65"
         let q = """
-        [out:json][timeout:15];
+        [out:json][timeout:30];
         (
-          relation["route"="hiking"]["name"~"\(escaped)",i](\(b));
-          relation["route"="foot"]["name"~"\(escaped)",i](\(b));
+          relation["route"~"hiking|foot|mountain_hiking|walking|trail"]["name"~"\(escaped)",i](\(b));
         );
-        out geom 20;
+        out geom 50;
         """
-        return try await runOverpassQuery(q, limit: 20)
+        return try await runOverpassQuery(q, limit: 50)
     }
 
     private func runOverpassQuery(_ query: String, limit: Int) async throws -> [TrailResult] {
@@ -138,6 +131,22 @@ actor TrailSearchService {
             }
         }
         throw lastError
+    }
+
+    private func relevanceScore(tags: [String: Any], isRelation: Bool) -> Double {
+        var score = 0.0
+        if isRelation { score += 2.0 }
+        if tags["wikidata"] != nil || tags["wikipedia"] != nil { score += 5.0 }
+        switch tags["network"] as? String {
+        case "iwn", "nwn": score += 4.0
+        case "rwn":         score += 3.0
+        case "lwn":         score += 1.0
+        default: break
+        }
+        if tags["operator"] != nil { score += 1.5 }
+        if tags["distance"] != nil { score += 1.0 }
+        if tags["sac_scale"] != nil { score += 0.5 }
+        return score
     }
 
     private func parseTrailElements(_ data: Data) -> [TrailResult] {
@@ -180,6 +189,7 @@ actor TrailSearchService {
             var sacScale: String?
             var network: String?
             var description: String?
+            var relevanceScore: Double
         }
 
         var wayAccByName: [String: WayAcc] = [:]
@@ -220,7 +230,8 @@ actor TrailSearchService {
                     wayOrder.append(name)
                     wayAccByName[name] = WayAcc(
                         id: elemId, segments: [seg], distanceM: segDist,
-                        sacScale: sacScale, network: network, description: description
+                        sacScale: sacScale, network: network, description: description,
+                        relevanceScore: relevanceScore(tags: tags, isRelation: false)
                     )
                 } else {
                     wayAccByName[name]!.segments.append(seg)
@@ -262,10 +273,11 @@ actor TrailSearchService {
                     return nil
                 } ?? "relation/unknown"
 
-                let trail = TrailResult(
+                var trail = TrailResult(
                     id: id, name: name, distanceM: distM, coordinates: coords,
                     description: description, sacScale: sacScale, network: network
                 )
+                trail.relevanceScore = relevanceScore(tags: tags, isRelation: true)
                 if let idx = seenByName[name] {
                     results[idx] = trail
                 } else {
@@ -284,15 +296,16 @@ actor TrailSearchService {
             let coords = joinSegments(acc.segments)
             guard coords.count >= 2 else { continue }
 
-            let trail = TrailResult(
+            var trail = TrailResult(
                 id: acc.id, name: name, distanceM: acc.distanceM, coordinates: coords,
                 description: acc.description, sacScale: acc.sacScale, network: acc.network
             )
+            trail.relevanceScore = acc.relevanceScore
             seenByName[name] = results.count
             results.append(trail)
         }
 
-        return results.sorted { $0.distanceM < $1.distanceM }
+        return results.sorted { $0.relevanceScore > $1.relevanceScore }
     }
 
     // Greedy nearest-neighbour join: orders segments so each connects to the next,
@@ -371,7 +384,8 @@ actor TrailSearchService {
         }
         var balanced: [TrailResult] = []
         for category in TrailCategory.allCases {
-            balanced.append(contentsOf: (byCategory[category] ?? []).prefix(15))
+            let sorted = (byCategory[category] ?? []).sorted { $0.relevanceScore > $1.relevanceScore }
+            balanced.append(contentsOf: sorted.prefix(15))
         }
         return balanced
     }
