@@ -505,11 +505,11 @@ enum DifficultyFilter: String, CaseIterable {
 
     func matches(_ trail: TrailResult) -> Bool {
         switch self {
-        case .any:      return true
-        case .easy:     return trail.difficultyLabel == "Easy"
-        case .moderate: return trail.difficultyLabel == "Moderate"
-        case .hard:     return trail.difficultyLabel == "Hard"
-        case .epic:     return trail.difficultyLabel == "Epic"
+        case .any: return true
+        default:
+            // Trails with no difficulty data pass through — only exclude explicit mismatches
+            guard let label = trail.difficultyLabel else { return true }
+            return label == self.rawValue
         }
     }
 }

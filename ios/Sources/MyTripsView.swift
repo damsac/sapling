@@ -291,8 +291,7 @@ struct RouteDetailSheet: View {
     @State private var renameText = ""
     @State private var offlineState: OfflineState = .idle
     @State private var trackingPackId: String? = nil
-    @State private var shareUrl: URL? = nil
-    @State private var showShareSheet = false
+    @State private var gpxUrl: URL? = nil
     private let offlineManager = OfflineMapManager.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -495,18 +494,24 @@ struct RouteDetailSheet: View {
                                     .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
                             }
 
-                            Button {
-                                if let url = onExportGpx() {
-                                    shareUrl = url
-                                    showShareSheet = true
+                            Group {
+                                if let url = gpxUrl {
+                                    ShareLink(item: url) {
+                                        Label("Export GPX", systemImage: "square.and.arrow.up")
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundStyle(SaplingColors.ink)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 12)
+                                            .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
+                                    }
+                                } else {
+                                    Label("Export GPX", systemImage: "square.and.arrow.up")
+                                        .font(.subheadline.weight(.medium))
+                                        .foregroundStyle(SaplingColors.bark.opacity(0.4))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                        .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
                                 }
-                            } label: {
-                                Label("Export GPX", systemImage: "square.and.arrow.up")
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(SaplingColors.ink)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 12)
-                                    .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
                             }
 
                             Button(role: .destructive) {
@@ -528,9 +533,7 @@ struct RouteDetailSheet: View {
             }
         }
         .background(SaplingColors.parchment.ignoresSafeArea())
-        .sheet(isPresented: $showShareSheet, onDismiss: { shareUrl = nil }) {
-            if let url = shareUrl { ShareSheet(url: url) }
-        }
+        .onAppear { gpxUrl = onExportGpx() }
         .alert("Rename Route", isPresented: $showRenameAlert) {
             TextField("Route name", text: $renameText)
             Button("Save") {
