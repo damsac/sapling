@@ -38,11 +38,15 @@ The Community tab ships as a locked placeholder in Phase 2 so the nav structure 
 
 Turn Sapling from a recording tool into a planning tool. Without this, users still need AllTrails or Gaia before they open Sapling.
 
-**Trail Search**
-- Search trails by name, location, or region
-- Filter by distance, elevation gain, difficulty, features (water, camping, dogs)
-- Data source: OpenStreetMap/Overpass API or licensed trail database
-- Show trail on map with stats before committing
+**Trail Search** 🔨 (partially shipped — needs continued work)
+- ✅ Search by trail name or place name (geocodes via Nominatim → Overpass bbox query)
+- ✅ Results grouped by category: Short Walks / Day Hikes / Long Days / Overnight
+- ✅ Debounced search with task cancellation (no keyboard lag)
+- ✅ Way-segment stitching + greedy geometric join for route display
+- ✅ 10-per-category limit with "View More" expand
+- ⚠️ **Known: OSM relation coverage is sparse for many parks (e.g. Yosemite returns ~1 result).** Fallback to stitched ways helps but is imperfect — next session should explore supplementing with a more complete trail dataset or better Overpass query strategies.
+- ⚠️ **Known: Map preview can still show inaccurate lines** for trails whose OSM relation members have incomplete or out-of-order geometry — the greedy join helps but doesn't solve gaps in data.
+- ⛔ Not started: filter by distance, elevation gain, difficulty, features (water, camping, dogs)
 
 **Route Builder** ✅
 - Draw a custom route on the map (tap to add points)
@@ -57,14 +61,18 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - See per-day stats: distance, gain, estimated hours
 - Export the full plan as GPX for use in other tools
 
-**Offline Maps — One-Tap Flow**
-- "Download area for this route" button on any planned or recorded trip
-- Automatically calculates bounding box + buffer and downloads
-- Current manual bounding box flow stays for power users
+**Offline Maps — One-Tap Flow** 🔨
+- ✅ "Download for Offline" button on TrailDetailView with pre-download size estimate
+- ✅ "Save & Download Map" combined action in save alert
+- ✅ "Offline ready" badge on saved routes in My Trips
+- ✅ Download tracked by pack ID — "Downloaded" state persists across dismissals
+- ✅ RouteDetailSheet wired to same offline pattern
+- ⛔ Not started: download from the Map tab for any currently-viewed area via route context
 
-**GPX/KML Export**
-- Export any recorded or planned trip as GPX
-- Export Seeds as waypoints embedded in the GPX file
+**GPX/KML Export** 🔨 (partially shipped — broken)
+- ✅ Rust core `export_route_gpx` implemented, FFI wired, Swift `exportGpx()` in RouteBuilderViewModel
+- ⛔ **Known: tapping "Export GPX" in My Trips shows a blank screen** — the share sheet is not being presented correctly. Needs debugging next session before this feature can be considered done.
+- ⛔ Not started: embed Seeds as waypoints in the exported file
 
 ---
 

@@ -76,71 +76,96 @@ struct ContentView: View {
             // Left-side floating controls
             VStack {
                 HStack(alignment: .top) {
-                    VStack(spacing: 12) {
-                        Button {
-                            showSeedList = true
-                        } label: {
-                            Image(systemName: "leaf.fill")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(.white)
-                                .frame(width: 40, height: 40)
-                                .background(SaplingColors.brand, in: Circle())
-                                .shadow(color: SaplingColors.brand.opacity(0.45), radius: 6, y: 3)
-                        }
-
-                        Button {
-                            if routeViewModel.isBuilding {
-                                withAnimation { routeViewModel.cancel() }
-                            } else {
-                                displayRoute = nil
-                                activeRoute = nil
-                                withAnimation { routeViewModel.startBuilding() }
+                    VStack(spacing: 8) {
+                        VStack(spacing: 3) {
+                            Button {
+                                showSeedList = true
+                            } label: {
+                                Image(systemName: "leaf.fill")
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 40, height: 40)
+                                    .background(SaplingColors.brand, in: Circle())
+                                    .shadow(color: SaplingColors.brand.opacity(0.45), radius: 6, y: 3)
                             }
-                        } label: {
-                            Image(systemName: routeViewModel.isBuilding ? "xmark" : "point.3.filled.connected.trianglepath.dotted")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(routeViewModel.isBuilding ? SaplingColors.stopRecording : SaplingColors.ink)
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    routeViewModel.isBuilding
-                                        ? SaplingColors.stopRecording.opacity(0.12)
-                                        : SaplingColors.parchment.opacity(0.92),
-                                    in: Circle()
-                                )
-                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                            Text("Seeds")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(SaplingColors.bark)
                         }
 
-                        Button {
-                            routeViewModel.loadRoutes()
-                            showRouteList = true
-                        } label: {
-                            Image(systemName: "map")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(activeRoute != nil ? SaplingColors.brand : SaplingColors.ink)
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    activeRoute != nil
-                                        ? SaplingColors.brand.opacity(0.12)
-                                        : SaplingColors.parchment.opacity(0.92),
-                                    in: Circle()
-                                )
-                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        VStack(spacing: 3) {
+                            Button {
+                                if routeViewModel.isBuilding {
+                                    withAnimation { routeViewModel.cancel() }
+                                } else {
+                                    displayRoute = nil
+                                    activeRoute = nil
+                                    withAnimation { routeViewModel.startBuilding() }
+                                }
+                            } label: {
+                                Image(systemName: routeViewModel.isBuilding ? "xmark" : "point.3.filled.connected.trianglepath.dotted")
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(routeViewModel.isBuilding ? SaplingColors.stopRecording : SaplingColors.ink)
+                                    .frame(width: 40, height: 40)
+                                    .background(
+                                        routeViewModel.isBuilding
+                                            ? SaplingColors.stopRecording.opacity(0.12)
+                                            : SaplingColors.parchment.opacity(0.92),
+                                        in: Circle()
+                                    )
+                                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                            }
+                            Text(routeViewModel.isBuilding ? "Cancel" : "Route")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(routeViewModel.isBuilding ? SaplingColors.stopRecording : SaplingColors.bark)
                         }
 
-                        OfflineMapButton(
-                            packCount: offlineManager.packs.count,
-                            action: { showOfflineSheet = true }
-                        )
+                        VStack(spacing: 3) {
+                            Button {
+                                routeViewModel.loadRoutes()
+                                showRouteList = true
+                            } label: {
+                                Image(systemName: "map")
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(activeRoute != nil ? SaplingColors.brand : SaplingColors.ink)
+                                    .frame(width: 40, height: 40)
+                                    .background(
+                                        activeRoute != nil
+                                            ? SaplingColors.brand.opacity(0.12)
+                                            : SaplingColors.parchment.opacity(0.92),
+                                        in: Circle()
+                                    )
+                                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                            }
+                            Text("Trips")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(activeRoute != nil ? SaplingColors.brand : SaplingColors.bark)
+                        }
 
-                        Button {
-                            snapToLocationTrigger.toggle()
-                        } label: {
-                            Image(systemName: "location.fill")
-                                .font(.body.weight(.medium))
-                                .foregroundStyle(SaplingColors.ink)
-                                .frame(width: 40, height: 40)
-                                .background(SaplingColors.parchment.opacity(0.92), in: Circle())
-                                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                        VStack(spacing: 3) {
+                            OfflineMapButton(
+                                packCount: offlineManager.packs.count,
+                                action: { showOfflineSheet = true }
+                            )
+                            Text("Offline")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(SaplingColors.bark)
+                        }
+
+                        VStack(spacing: 3) {
+                            Button {
+                                snapToLocationTrigger.toggle()
+                            } label: {
+                                Image(systemName: "location.fill")
+                                    .font(.body.weight(.medium))
+                                    .foregroundStyle(SaplingColors.ink)
+                                    .frame(width: 40, height: 40)
+                                    .background(SaplingColors.parchment.opacity(0.92), in: Circle())
+                                    .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+                            }
+                            Text("Find Me")
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(SaplingColors.bark)
                         }
 
                         CompassWidget(heading: viewModel.currentHeading)

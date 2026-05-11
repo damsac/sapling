@@ -225,6 +225,11 @@ struct TrailMapView: View {
                         camera = .center(coordinate, zoom: max(currentZoom, 15))
                     }
                 }
+                .onChange(of: displayRoute) { _, newRoute in
+                    guard let coords = newRoute, !coords.isEmpty else { return }
+                    let bbox = boundingBox(for: coords)
+                    camera = .center(bbox.center, zoom: zoomToFit(bounds: bbox))
+                }
                 .onMapViewProxyUpdate(updateMode: .realtime) { proxy in
                     mapProxy = proxy
                 }

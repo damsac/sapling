@@ -234,3 +234,91 @@ func distanceAlongRoute(_ route: [CLLocationCoordinate2D], to target: CLLocation
     let idx = nearestRouteIndex(route, to: target)
     return (0..<idx).reduce(0.0) { $0 + haversineM(route[$1], route[$1 + 1]) }
 }
+
+func elevationStatsFromProfile(_ profile: [Double]) -> RouteElevationStats {
+    guard profile.count >= 2 else {
+        return RouteElevationStats(gain: 0, loss: 0, minElev: 0, maxElev: 0, hasData: false)
+    }
+    var gain = 0.0, loss = 0.0
+    for i in 1..<profile.count {
+        let d = profile[i] - profile[i-1]
+        if d > 0 { gain += d } else { loss += -d }
+    }
+    return RouteElevationStats(
+        gain: gain, loss: loss,
+        minElev: profile.min()!, maxElev: profile.max()!,
+        hasData: true
+    )
+}
+
+func seedsNearRoute(
+    _ seeds: [FfiSeed],
+    coordinates: [CLLocationCoordinate2D],
+    radiusM: Double = 500
+) -> [SeedOnRoute] {
+    guard coordinates.count >= 2 else { return [] }
+    return seeds.compactMap { seed in
+        let pt = CLLocationCoordinate2D(latitude: seed.latitude, longitude: seed.longitude)
+        guard distanceFromRoute(coordinates, user: pt) <= radiusM else { return nil }
+        return SeedOnRoute(seed: seed, distanceAlongM: distanceAlongRoute(coordinates, to: pt))
+    }
+    .sorted { $0.distanceAlongM < $1.distanceAlongM }
+}
+
+// MARK: - Camp recommendations
+
+struct CampRecommendation: Identifiable {
+    let id = UUID()
+    let day: Int
+    let distanceAlongM: Double
+    let rationale: String
+}
+
+func computeCampRecommendations(
+    coordinates: [CLLocationCoordinate2D],
+    elevations: [Double]?,
+    totalDistanceM: Double,
+    estimatedMinutes: Int
+) -> [CampRecommendation] {
+    let days = max(2, (estimatedMinutes + 479) / 480)
+    guard days >= 2, coordinates.count >= 2 else { return [] }
+
+    // Build cumulative distance table along the coordinate array.
+    var cumDist: [Double] = [0]
+    for i in 1..<coordinates.count {
+        cumDist.append(cumDist[i - 1] + haversineM(coordinates[i - 1], coordinates[i]))
+    }
+    let actualTotal = cumDist.last ?? totalDistanceM
+
+    var result: [CampRecommendation] = []
+    for night in 1..<days {
+        let targetDist = actualTotal * Double(night) / Double(days)
+        let coordIdx = cumDist.firstIndex(where: { $0 >= targetDist }) ?? (coordinates.count - 1)
+
+        var reasons: [String] = ["~\(formatDistance(targetDist)) mark"]
+
+        if let elevs = elevations, elevs.count >= 4 {
+            let t = Double(coordIdx) / Double(max(1, coordinates.count - 1))
+            let ei = min(max(Int((t * Double(elevs.count - 1)).rounded()), 0), elevs.count - 1)
+
+            let w1lo = max(0, ei - 5), w1hi = min(elevs.count - 1, ei + 5)
+            let w1 = Array(elevs[w1lo...w1hi])
+            let mean1 = w1.reduce(0, +) / Double(w1.count)
+            let stdDev = sqrt(w1.map { ($0 - mean1) * ($0 - mean1) }.reduce(0, +) / Double(w1.count))
+
+            let w2lo = max(0, ei - 15), w2hi = min(elevs.count - 1, ei + 15)
+            let w2 = Array(elevs[w2lo...w2hi])
+            let mean2 = w2.reduce(0, +) / Double(w2.count)
+
+            if stdDev < 30 { reasons.append("flat terrain") }
+            if elevs[ei] < mean2 - 15 { reasons.append("valley — water likely nearby") }
+        }
+
+        result.append(CampRecommendation(
+            day: night,
+            distanceAlongM: targetDist,
+            rationale: reasons.joined(separator: " · ")
+        ))
+    }
+    return result
+}
