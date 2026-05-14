@@ -9,6 +9,9 @@ struct TrailResult: Identifiable {
     let description: String?
     let sacScale: String?
     let network: String?
+    var allowsDogs: Bool? = nil
+    var hasWater: Bool? = nil
+    var hasCamping: Bool? = nil
     var elevationProfile: [Double]? = nil
     var relevanceScore: Double = 0
 }

@@ -189,6 +189,9 @@ actor TrailSearchService {
             var sacScale: String?
             var network: String?
             var description: String?
+            var allowsDogs: Bool?
+            var hasWater: Bool?
+            var hasCamping: Bool?
             var relevanceScore: Double
         }
 
@@ -207,6 +210,11 @@ actor TrailSearchService {
             let sacScale = tags["sac_scale"] as? String
             let network = tags["network"] as? String
             let description = tags["description"] as? String
+
+            let dogTag = (tags["dog"] as? String) ?? (tags["dogs"] as? String)
+            let allowsDogs: Bool? = dogTag.map { ["yes", "leashed", "on_leash"].contains($0) }
+            let hasWater: Bool? = (tags["drinking_water"] as? String).map { $0 == "yes" }
+            let hasCamping: Bool? = (tags["camping"] as? String).map { ["yes", "permitted"].contains($0) }
 
             var taggedDistM: Double = 0
             if let distRaw = tags["distance"] as? String {
@@ -231,12 +239,16 @@ actor TrailSearchService {
                     wayAccByName[name] = WayAcc(
                         id: elemId, segments: [seg], distanceM: segDist,
                         sacScale: sacScale, network: network, description: description,
+                        allowsDogs: allowsDogs, hasWater: hasWater, hasCamping: hasCamping,
                         relevanceScore: relevanceScore(tags: tags, isRelation: false)
                     )
                 } else {
                     wayAccByName[name]!.segments.append(seg)
                     wayAccByName[name]!.distanceM += segDist
                     wayAccByName[name]!.sacScale = wayAccByName[name]!.sacScale ?? sacScale
+                    wayAccByName[name]!.allowsDogs = wayAccByName[name]!.allowsDogs ?? allowsDogs
+                    wayAccByName[name]!.hasWater = wayAccByName[name]!.hasWater ?? hasWater
+                    wayAccByName[name]!.hasCamping = wayAccByName[name]!.hasCamping ?? hasCamping
                 }
 
             } else {
@@ -275,7 +287,8 @@ actor TrailSearchService {
 
                 var trail = TrailResult(
                     id: id, name: name, distanceM: distM, coordinates: coords,
-                    description: description, sacScale: sacScale, network: network
+                    description: description, sacScale: sacScale, network: network,
+                    allowsDogs: allowsDogs, hasWater: hasWater, hasCamping: hasCamping
                 )
                 trail.relevanceScore = relevanceScore(tags: tags, isRelation: true)
                 if let idx = seenByName[name] {
@@ -298,7 +311,8 @@ actor TrailSearchService {
 
             var trail = TrailResult(
                 id: acc.id, name: name, distanceM: acc.distanceM, coordinates: coords,
-                description: acc.description, sacScale: acc.sacScale, network: acc.network
+                description: acc.description, sacScale: acc.sacScale, network: acc.network,
+                allowsDogs: acc.allowsDogs, hasWater: acc.hasWater, hasCamping: acc.hasCamping
             )
             trail.relevanceScore = acc.relevanceScore
             seenByName[name] = results.count

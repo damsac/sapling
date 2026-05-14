@@ -38,7 +38,7 @@ The Community tab ships as a locked placeholder in Phase 2 so the nav structure 
 
 Turn Sapling from a recording tool into a planning tool. Without this, users still need AllTrails or Gaia before they open Sapling.
 
-**Trail Search** 🔨 (mostly shipped — elevation profile remaining)
+**Trail Search** ✅
 - ✅ Search by trail name or place name (geocodes via Nominatim → Overpass bbox query)
 - ✅ Results grouped by category: Short Walks / Day Hikes / Long Days / Overnight
 - ✅ Debounced search with task cancellation (no keyboard lag)
@@ -49,7 +49,7 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - ✅ `relevanceScore` from OSM tags (wikidata, network rank, operator) — prominent trails sort first
 - ✅ Distance and difficulty chip filters; difficulty computed from gain+distance when OSM tag absent
 - ✅ Elevation profile in trail detail view; top 8 results prefetched in background after search
-- ⛔ Not started: filter by features (water, camping, dogs)
+- ✅ Feature filters: Dogs OK / Water / Camping (parsed from OSM tags, AND logic)
 
 **Route Builder** ✅
 - Draw a custom route on the map (tap to add points)
@@ -72,10 +72,10 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - ✅ RouteDetailSheet wired to same offline pattern
 - ⛔ Not started: download from the Map tab for any currently-viewed area via route context
 
-**GPX/KML Export** ✅ (partially shipped)
+**GPX/KML Export** ✅
 - ✅ Rust core `export_route_gpx` implemented, FFI wired, Swift `exportGpx()` in RouteBuilderViewModel
 - ✅ Share sheet fixed — switched to `ShareLink` (native SwiftUI), blank screen resolved
-- ⛔ Not started: embed Seeds as waypoints in the exported file
+- ✅ Seeds embedded as `<wpt>` waypoints in exported GPX (same pattern as trip export)
 
 ---
 

@@ -124,7 +124,8 @@ pub fn export_trip_gpx(trip: &TripSummary, points: &[TrackPoint], seeds: &[Seed]
 }
 
 /// Export a planned route as a GPX XML string using the `<rte>/<rtept>` element.
-pub fn export_route_gpx(name: &str, waypoints: &[RouteWaypoint]) -> String {
+/// Seeds near the route are embedded as `<wpt>` waypoints.
+pub fn export_route_gpx(name: &str, waypoints: &[RouteWaypoint], seeds: &[Seed]) -> String {
     let mut xml = String::new();
     xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     xml.push_str(
@@ -134,6 +135,23 @@ pub fn export_route_gpx(name: &str, waypoints: &[RouteWaypoint]) -> String {
         "  <metadata><name>{}</name></metadata>\n",
         escape_xml(name)
     ));
+
+    for seed in seeds {
+        xml.push_str(&format!(
+            "  <wpt lat=\"{}\" lon=\"{}\">\n",
+            seed.latitude, seed.longitude
+        ));
+        if let Some(ele) = seed.elevation {
+            xml.push_str(&format!("    <ele>{ele}</ele>\n"));
+        }
+        xml.push_str(&format!("    <name>{}</name>\n", escape_xml(&seed.title)));
+        if let Some(notes) = &seed.notes {
+            xml.push_str(&format!("    <desc>{}</desc>\n", escape_xml(notes)));
+        }
+        xml.push_str(&format!("    <type>{}</type>\n", seed.seed_type.as_str()));
+        xml.push_str("  </wpt>\n");
+    }
+
     xml.push_str(&format!("  <rte><name>{}</name>\n", escape_xml(name)));
     for pt in waypoints {
         xml.push_str(&format!(
