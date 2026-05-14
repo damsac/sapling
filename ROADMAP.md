@@ -38,15 +38,18 @@ The Community tab ships as a locked placeholder in Phase 2 so the nav structure 
 
 Turn Sapling from a recording tool into a planning tool. Without this, users still need AllTrails or Gaia before they open Sapling.
 
-**Trail Search** 🔨 (partially shipped — needs continued work)
+**Trail Search** 🔨 (mostly shipped — elevation profile remaining)
 - ✅ Search by trail name or place name (geocodes via Nominatim → Overpass bbox query)
 - ✅ Results grouped by category: Short Walks / Day Hikes / Long Days / Overnight
 - ✅ Debounced search with task cancellation (no keyboard lag)
 - ✅ Way-segment stitching + greedy geometric join for route display
-- ✅ 10-per-category limit with "View More" expand
-- ⚠️ **Known: OSM relation coverage is sparse for many parks (e.g. Yosemite returns ~1 result).** Fallback to stitched ways helps but is imperfect — next session should explore supplementing with a more complete trail dataset or better Overpass query strategies.
-- ⚠️ **Known: Map preview can still show inaccurate lines** for trails whose OSM relation members have incomplete or out-of-order geometry — the greedy join helps but doesn't solve gaps in data.
-- ⛔ Not started: filter by distance, elevation gain, difficulty, features (water, camping, dogs)
+- ✅ 15-per-category limit with category balancing
+- ✅ Overpass uses `out geom` + `[maxsize:536870912]` — full coverage for large parks
+- ✅ Route type regex covers hiking/foot/mountain_hiking/walking/trail variants
+- ✅ `relevanceScore` from OSM tags (wikidata, network rank, operator) — prominent trails sort first
+- ✅ Distance and difficulty chip filters; difficulty computed from gain+distance when OSM tag absent
+- ⛔ Not started: elevation profile in trail detail view (fetchElevation exists, needs wiring)
+- ⛔ Not started: filter by features (water, camping, dogs)
 
 **Route Builder** ✅
 - Draw a custom route on the map (tap to add points)
@@ -69,9 +72,9 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - ✅ RouteDetailSheet wired to same offline pattern
 - ⛔ Not started: download from the Map tab for any currently-viewed area via route context
 
-**GPX/KML Export** 🔨 (partially shipped — broken)
+**GPX/KML Export** ✅ (partially shipped)
 - ✅ Rust core `export_route_gpx` implemented, FFI wired, Swift `exportGpx()` in RouteBuilderViewModel
-- ⛔ **Known: tapping "Export GPX" in My Trips shows a blank screen** — the share sheet is not being presented correctly. Needs debugging next session before this feature can be considered done.
+- ✅ Share sheet fixed — switched to `ShareLink` (native SwiftUI), blank screen resolved
 - ⛔ Not started: embed Seeds as waypoints in the exported file
 
 ---

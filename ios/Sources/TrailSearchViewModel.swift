@@ -12,6 +12,7 @@ class TrailSearchViewModel {
     private let service = TrailSearchService.shared
     private var searchTask: Task<Void, Never>?
     private var debounceTask: Task<Void, Never>?
+    private var elevationPrefetchTask: Task<Void, Never>?
 
     // Called on every keystroke — debounces before firing
     func scheduleSearch(query: String) {
@@ -19,6 +20,7 @@ class TrailSearchViewModel {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else {
             searchTask?.cancel()
+            elevationPrefetchTask?.cancel()
             isSearching = false
             results = []
             searchError = nil
@@ -35,6 +37,7 @@ class TrailSearchViewModel {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         searchTask?.cancel()
+        elevationPrefetchTask?.cancel()
         isSearching = true
         searchError = nil
         searchTask = Task { @MainActor in
@@ -42,6 +45,7 @@ class TrailSearchViewModel {
                 let r = try await service.search(query: trimmed)
                 guard !Task.isCancelled else { return }
                 results = r
+                prefetchElevation(for: r)
             } catch is CancellationError {
                 return
             } catch {
@@ -56,7 +60,9 @@ class TrailSearchViewModel {
         isLoadingRecommendations = true
         Task { @MainActor in
             do {
-                recommendedTrails = try await service.nearbyTrails(center: center)
+                let r = try await service.nearbyTrails(center: center)
+                recommendedTrails = r
+                prefetchElevation(for: r)
             } catch {
                 // silently fail for recommendations
             }
@@ -65,6 +71,7 @@ class TrailSearchViewModel {
     }
 
     func clearResults() {
+        elevationPrefetchTask?.cancel()
         results = []
         searchError = nil
     }
@@ -77,6 +84,27 @@ class TrailSearchViewModel {
             }
             if let i = recommendedTrails.firstIndex(where: { $0.id == trail.id }) {
                 recommendedTrails[i].elevationProfile = elevations
+            }
+        }
+    }
+
+    // Fetches elevation for the top 8 results serially so the difficulty badges
+    // and gain stats in the list update without requiring the user to open each trail.
+    private func prefetchElevation(for trails: [TrailResult]) {
+        elevationPrefetchTask?.cancel()
+        let top = Array(trails.prefix(8))
+        elevationPrefetchTask = Task { @MainActor in
+            for trail in top {
+                guard !Task.isCancelled else { return }
+                guard trail.elevationProfile == nil else { continue }
+                guard let elevations = try? await service.fetchElevation(for: trail),
+                      !Task.isCancelled else { continue }
+                if let i = self.results.firstIndex(where: { $0.id == trail.id }) {
+                    self.results[i].elevationProfile = elevations
+                }
+                if let i = self.recommendedTrails.firstIndex(where: { $0.id == trail.id }) {
+                    self.recommendedTrails[i].elevationProfile = elevations
+                }
             }
         }
     }
