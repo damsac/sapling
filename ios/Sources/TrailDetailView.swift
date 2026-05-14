@@ -280,6 +280,10 @@ struct TrailDetailView: View {
 
     private func loadElevation() async {
         guard elevations == nil else { return }
+        if let prefetched = trail.elevationProfile {
+            elevations = prefetched
+            return
+        }
         isLoadingElevation = true
         elevations = try? await TrailSearchService.shared.fetchElevation(for: trail)
         isLoadingElevation = false
