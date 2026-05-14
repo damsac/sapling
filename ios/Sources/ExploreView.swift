@@ -11,13 +11,21 @@ struct ExploreView: View {
     @State private var categoryLimits: [TrailCategory: Int] = [:]
     @State private var distanceFilter: DistanceFilter = .any
     @State private var difficultyFilter: DifficultyFilter = .any
+    @State private var featureFilters: Set<FeatureFilter> = []
+    @State private var showFilters = false
 
-    private var hasActiveFilters: Bool {
-        distanceFilter != .any || difficultyFilter != .any
+    private var activeFilterCount: Int {
+        (distanceFilter != .any ? 1 : 0) + (difficultyFilter != .any ? 1 : 0) + featureFilters.count
     }
 
+    private var hasActiveFilters: Bool { activeFilterCount > 0 }
+
     private func applyFilters(_ trails: [TrailResult]) -> [TrailResult] {
-        trails.filter { distanceFilter.matches($0) && difficultyFilter.matches($0) }
+        trails.filter { trail in
+            distanceFilter.matches(trail) &&
+            difficultyFilter.matches(trail) &&
+            featureFilters.allSatisfy { $0.matches(trail) }
+        }
     }
 
     var body: some View {
@@ -26,7 +34,7 @@ struct ExploreView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     searchBar
                     if !searchVM.results.isEmpty || !searchVM.recommendedTrails.isEmpty {
-                        filterBar
+                        filterButton
                     }
                     if searchVM.isSearching {
                         searchingState
@@ -49,6 +57,15 @@ struct ExploreView: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .task { await loadNearbyIfAuthorized() }
+        .sheet(isPresented: $showFilters) {
+            FilterSheet(
+                distanceFilter: $distanceFilter,
+                difficultyFilter: $difficultyFilter,
+                featureFilters: $featureFilters
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private func loadNearbyIfAuthorized() async {
@@ -151,42 +168,38 @@ struct ExploreView: View {
         .background(SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 14))
     }
 
-    // MARK: - Filter Bar
+    // MARK: - Filter Button
 
-    private var filterBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(DistanceFilter.allCases, id: \.self) { f in
-                    filterChip(f.rawValue, active: distanceFilter == f) {
-                        distanceFilter = distanceFilter == f ? .any : f
-                        categoryLimits = [:]
-                    }
+    private var filterButton: some View {
+        HStack(spacing: 10) {
+            Button { showFilters = true } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.caption.weight(.semibold))
+                    Text(activeFilterCount > 0 ? "Filters · \(activeFilterCount)" : "Filters")
+                        .font(.caption.weight(.semibold))
                 }
-                Divider()
-                    .frame(height: 20)
-                    .padding(.horizontal, 2)
-                ForEach(DifficultyFilter.allCases.dropFirst(), id: \.self) { f in
-                    filterChip(f.rawValue, active: difficultyFilter == f) {
-                        difficultyFilter = difficultyFilter == f ? .any : f
-                        categoryLimits = [:]
-                    }
-                }
+                .foregroundStyle(activeFilterCount > 0 ? .white : SaplingColors.bark)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(activeFilterCount > 0 ? SaplingColors.brand : SaplingColors.parchment, in: Capsule())
+                .overlay(Capsule().stroke(activeFilterCount > 0 ? Color.clear : SaplingColors.bark.opacity(0.2), lineWidth: 1))
             }
-            .padding(.horizontal, 1)
-        }
-    }
+            .buttonStyle(.plain)
 
-    private func filterChip(_ label: String, active: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
+            if hasActiveFilters {
+                Button("Clear all") {
+                    distanceFilter = .any
+                    difficultyFilter = .any
+                    featureFilters = []
+                    categoryLimits = [:]
+                }
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(active ? .white : SaplingColors.bark)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(active ? SaplingColors.brand : SaplingColors.parchment, in: Capsule())
-                .overlay(Capsule().stroke(active ? Color.clear : SaplingColors.bark.opacity(0.2), lineWidth: 1))
+                .foregroundStyle(SaplingColors.brand)
+            }
+
+            Spacer()
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Results List
@@ -201,13 +214,9 @@ struct ExploreView: View {
                     .kerning(0.8)
                 if hasActiveFilters {
                     Spacer()
-                    Button("Clear") {
-                        distanceFilter = .any
-                        difficultyFilter = .any
-                        categoryLimits = [:]
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(SaplingColors.brand)
+                    Button("Edit Filters") { showFilters = true }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SaplingColors.brand)
                 }
             }
 
@@ -486,6 +495,94 @@ private struct TrailResultRow: View {
     }
 }
 
+// MARK: - Filter Sheet
+
+private struct FilterSheet: View {
+    @Binding var distanceFilter: DistanceFilter
+    @Binding var difficultyFilter: DifficultyFilter
+    @Binding var featureFilters: Set<FeatureFilter>
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    filterSection("DISTANCE") {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+                            ForEach(DistanceFilter.allCases, id: \.self) { f in
+                                sheetChip(f.rawValue, active: distanceFilter == f) {
+                                    distanceFilter = distanceFilter == f ? .any : f
+                                }
+                            }
+                        }
+                    }
+                    filterSection("DIFFICULTY") {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+                            ForEach(DifficultyFilter.allCases, id: \.self) { f in
+                                sheetChip(f.rawValue, active: difficultyFilter == f) {
+                                    difficultyFilter = difficultyFilter == f ? .any : f
+                                }
+                            }
+                        }
+                    }
+                    filterSection("FEATURES") {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 8)], spacing: 8) {
+                            ForEach(FeatureFilter.allCases, id: \.self) { f in
+                                sheetChip(f.rawValue, active: featureFilters.contains(f)) {
+                                    if featureFilters.contains(f) { featureFilters.remove(f) }
+                                    else { featureFilters.insert(f) }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+            }
+            .background(SaplingColors.stone.ignoresSafeArea())
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Clear All") {
+                        distanceFilter = .any
+                        difficultyFilter = .any
+                        featureFilters = []
+                    }
+                    .foregroundStyle(SaplingColors.bark)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(SaplingColors.brand)
+                }
+            }
+        }
+    }
+
+    private func filterSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SaplingColors.bark)
+                .kerning(0.8)
+            content()
+        }
+    }
+
+    private func sheetChip(_ label: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(active ? .white : SaplingColors.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(active ? SaplingColors.brand : SaplingColors.parchment, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(active ? Color.clear : SaplingColors.bark.opacity(0.18), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - Filter Types
 
 enum DistanceFilter: String, CaseIterable {
@@ -515,5 +612,19 @@ enum DifficultyFilter: String, CaseIterable {
 
     func matches(_ trail: TrailResult) -> Bool {
         self == .any || trail.computedDifficultyLabel == self.rawValue
+    }
+}
+
+enum FeatureFilter: String, CaseIterable, Hashable {
+    case dogs    = "Dogs OK"
+    case water   = "Water"
+    case camping = "Camping"
+
+    func matches(_ trail: TrailResult) -> Bool {
+        switch self {
+        case .dogs:    return trail.allowsDogs == true
+        case .water:   return trail.hasWater == true
+        case .camping: return trail.hasCamping == true
+        }
     }
 }

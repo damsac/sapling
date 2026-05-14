@@ -545,15 +545,15 @@ impl SaplingCore {
     }
 
     pub fn export_route_gpx(&self, route_id: String) -> Result<String, FfiError> {
-        let route = self
-            .store
-            .lock()
-            .unwrap()
+        let store = self.store.lock().unwrap();
+        let route = store
             .get_route(&route_id)?
             .ok_or(FfiError::NotFound {
                 msg: format!("route {route_id} not found"),
             })?;
-        Ok(sapling_core::gpx::export_route_gpx(&route.name, &route.waypoints))
+        let seeds = store.list_seeds()?;
+        drop(store);
+        Ok(sapling_core::gpx::export_route_gpx(&route.name, &route.waypoints, &seeds))
     }
 
     pub fn import_trip_from_gpx(
