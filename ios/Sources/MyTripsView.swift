@@ -292,6 +292,7 @@ struct RouteDetailSheet: View {
     @State private var offlineState: OfflineState = .idle
     @State private var trackingPackId: String? = nil
     @State private var gpxUrl: URL? = nil
+    @State private var numDays: Int = 2
     private let offlineManager = OfflineMapManager.shared
     @Environment(\.dismiss) private var dismiss
 
@@ -300,22 +301,12 @@ struct RouteDetailSheet: View {
     private var routeCoordinates: [CLLocationCoordinate2D] {
         route.waypoints.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
     }
+    private var routeElevations: [Double] { route.waypoints.compactMap(\.elevation) }
     private var stats: RouteElevationStats { elevationStats(from: route.waypoints) }
     private var difficulty: RouteDifficulty { routeDifficulty(distanceM: route.distanceM, gainM: stats.gain) }
     private var estimatedMinutes: Int { naismithMinutes(distanceM: route.distanceM, elevationGainM: stats.gain) }
     private var nearbySeeds: [SeedOnRoute] { seedsNearRoute(seeds, waypoints: route.waypoints) }
     private var isMultiDay: Bool { estimatedMinutes > 300 }
-    private var campRecommendations: [CampRecommendation] {
-        let campSeeds = nearbySeeds.filter { $0.seed.seedType == .camp }
-        guard campSeeds.isEmpty else { return [] }
-        let elevs = route.waypoints.compactMap(\.elevation)
-        return computeCampRecommendations(
-            coordinates: routeCoordinates,
-            elevations: elevs.isEmpty ? nil : elevs,
-            totalDistanceM: route.distanceM,
-            estimatedMinutes: estimatedMinutes
-        )
-    }
 
     private var isDownloaded: Bool {
         offlineState == .done || offlineManager.isRegionDownloaded(coordinates: routeCoordinates)
@@ -377,11 +368,11 @@ struct RouteDetailSheet: View {
                     }
 
                     if isMultiDay {
-                        DayBreakdownSection(
-                            campSeeds: nearbySeeds.filter { $0.seed.seedType == .camp },
-                            recommendations: campRecommendations,
-                            totalDistanceM: route.distanceM,
-                            estimatedMinutes: estimatedMinutes
+                        MultiDayPlanSection(
+                            coordinates: routeCoordinates,
+                            elevations: routeElevations.isEmpty ? nil : routeElevations,
+                            seeds: nearbySeeds,
+                            numDays: $numDays
                         )
                         .padding(.horizontal, 16)
                     }
@@ -533,7 +524,10 @@ struct RouteDetailSheet: View {
             }
         }
         .background(SaplingColors.parchment.ignoresSafeArea())
-        .onAppear { gpxUrl = onExportGpx() }
+        .onAppear {
+            gpxUrl = onExportGpx()
+            numDays = max(2, (estimatedMinutes + 479) / 480)
+        }
         .alert("Rename Route", isPresented: $showRenameAlert) {
             TextField("Route name", text: $renameText)
             Button("Save") {

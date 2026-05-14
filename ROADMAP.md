@@ -48,7 +48,7 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - ✅ Route type regex covers hiking/foot/mountain_hiking/walking/trail variants
 - ✅ `relevanceScore` from OSM tags (wikidata, network rank, operator) — prominent trails sort first
 - ✅ Distance and difficulty chip filters; difficulty computed from gain+distance when OSM tag absent
-- ⛔ Not started: elevation profile in trail detail view (fetchElevation exists, needs wiring)
+- ✅ Elevation profile in trail detail view; top 8 results prefetched in background after search
 - ⛔ Not started: filter by features (water, camping, dogs)
 
 **Route Builder** ✅
@@ -58,11 +58,11 @@ Turn Sapling from a recording tool into a planning tool. Without this, users sti
 - Calculate total distance, estimated time, elevation stats
 - Save as a "planned trip" (distinct from a recorded trip)
 
-**Multi-Day Trip Planner**
-- Break a route into daily segments
-- Assign Seeds to each day (camp spots, water sources, bailout points)
-- See per-day stats: distance, gain, estimated hours
-- Export the full plan as GPX for use in other tools
+**Multi-Day Trip Planner** ✅
+- ✅ Break a route into daily segments (evenly spaced, stepper to adjust day count)
+- ✅ Seeds assigned to each day by distance along route
+- ✅ Per-day stats: distance, gain, estimated hours
+- ⛔ Not started: export the full plan as GPX
 
 **Offline Maps — One-Tap Flow** 🔨
 - ✅ "Download for Offline" button on TrailDetailView with pre-download size estimate

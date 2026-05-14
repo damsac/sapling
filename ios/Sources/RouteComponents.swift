@@ -242,111 +242,117 @@ struct SeedsAlongRouteSection: View {
     }
 }
 
-// MARK: - Day Breakdown Section
+// MARK: - Multi-Day Plan Section
 
-struct DayBreakdownSection: View {
-    let campSeeds: [SeedOnRoute]
-    let recommendations: [CampRecommendation]
-    let totalDistanceM: Double
-    let estimatedMinutes: Int
+struct MultiDayPlanSection: View {
+    let coordinates: [CLLocationCoordinate2D]
+    let elevations: [Double]?
+    let seeds: [SeedOnRoute]
+    @Binding var numDays: Int
 
-    private var days: Int { max(2, (estimatedMinutes + 479) / 480) }
+    private var segments: [DaySegment] {
+        computeDaySegments(coordinates: coordinates, elevations: elevations, seeds: seeds, numDays: numDays)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Multi-Day Planning")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(SaplingColors.bark)
-
-            if !campSeeds.isEmpty {
-                VStack(spacing: 8) {
-                    ForEach(Array(daySegments.enumerated()), id: \.offset) { i, seg in
-                        HStack(spacing: 8) {
-                            Text("Day \(i + 1)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(SaplingColors.brand, in: Capsule())
-                            Text(seg.label)
-                                .font(.subheadline)
-                                .foregroundStyle(SaplingColors.ink)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(formatDistance(seg.distanceM))
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(SaplingColors.bark)
-                        }
-                    }
-                }
-            } else if !recommendations.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(recommendations) { rec in
-                        HStack(alignment: .top, spacing: 10) {
-                            Text("Night \(rec.day)")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(SaplingColors.accent, in: Capsule())
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Suggested camp")
-                                    .font(.caption.weight(.medium))
-                                    .foregroundStyle(SaplingColors.ink)
-                                Text(rec.rationale)
-                                    .font(.caption2)
-                                    .foregroundStyle(SaplingColors.bark)
-                            }
-                            Spacer()
-                        }
-                        .padding(.vertical, 8)
-                        if rec.day < recommendations.count {
-                            Divider()
-                        }
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(SaplingColors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-
-                Text("Add camp seeds along the route to customize your plan.")
-                    .font(.caption2)
+            HStack {
+                Text("Multi-Day Plan")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(SaplingColors.bark)
-                    .padding(.top, 2)
-            } else {
-                HStack(spacing: 10) {
-                    Image(systemName: "moon.stars.fill")
-                        .font(.title3)
-                        .foregroundStyle(SaplingColors.accent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("~\(days) days estimated")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(SaplingColors.ink)
-                        Text("Loading elevation data for camp recommendations…")
-                            .font(.caption2)
-                            .foregroundStyle(SaplingColors.bark)
-                    }
-                    Spacer()
+                Spacer()
+                Stepper(value: $numDays, in: 2...14) {
+                    Text("\(numDays) days")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(SaplingColors.ink)
                 }
-                .padding(10)
-                .background(SaplingColors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                .fixedSize()
+            }
+
+            VStack(spacing: 8) {
+                ForEach(segments) { seg in
+                    DaySegmentCard(segment: seg)
+                }
             }
         }
         .padding(14)
         .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
     }
+}
 
-    private struct DaySegment { let label: String; let distanceM: Double }
+private struct DaySegmentCard: View {
+    let segment: DaySegment
 
-    private var daySegments: [DaySegment] {
-        var result: [DaySegment] = []
-        var prevDist = 0.0
-        var checkpoints = campSeeds.map { ($0.seed.title, $0.distanceAlongM) }
-        checkpoints.append(("End", totalDistanceM))
-        for (name, dist) in checkpoints {
-            result.append(DaySegment(label: "→ \(name)", distanceM: dist - prevDist))
-            prevDist = dist
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text("Day \(segment.day)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(SaplingColors.brand, in: Capsule())
+                if let stop = segment.campStop {
+                    Text("→ \(stop)")
+                        .font(.caption)
+                        .foregroundStyle(SaplingColors.ink)
+                        .lineLimit(1)
+                }
+                Spacer()
+            }
+
+            HStack(spacing: 0) {
+                DayStatCell(label: "Distance", value: formatDistance(segment.distanceM))
+                Divider().frame(height: 20)
+                DayStatCell(label: "Est. Time", value: formatDurationMinutes(segment.estimatedMinutes))
+                if segment.elevationGainM > 5 {
+                    Divider().frame(height: 20)
+                    DayStatCell(label: "Gain", value: "+\(formatElevation(segment.elevationGainM))")
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 6)
+            .background(SaplingColors.bark.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+
+            if !segment.seeds.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(segment.seeds, id: \.seed.id) { item in
+                            HStack(spacing: 3) {
+                                Image(systemName: item.seed.seedType.sfSymbol)
+                                    .font(.caption2)
+                                    .foregroundStyle(item.seed.seedType.color)
+                                Text(item.seed.title)
+                                    .font(.caption2)
+                                    .foregroundStyle(SaplingColors.ink)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(item.seed.seedType.color.opacity(0.1), in: Capsule())
+                        }
+                    }
+                }
+            }
         }
-        return result
+        .padding(10)
+        .background(Color.white.opacity(0.55), in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+private struct DayStatCell: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(SaplingColors.ink)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(SaplingColors.bark)
+        }
+        .frame(maxWidth: .infinity)
     }
 }

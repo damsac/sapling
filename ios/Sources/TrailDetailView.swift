@@ -14,6 +14,7 @@ struct TrailDetailView: View {
     @State private var isSaved = false
     @State private var offlineState: OfflineState = .idle
     @State private var trackingPackId: String? = nil
+    @State private var numDays: Int = 2
     private let offlineManager = OfflineMapManager.shared
 
     private enum OfflineState { case idle, inProgress, done }
@@ -27,17 +28,6 @@ struct TrailDetailView: View {
     private var difficulty: RouteDifficulty { routeDifficulty(distanceM: trail.distanceM, gainM: gainM) }
     private var nearbySeeds: [SeedOnRoute] { seedsNearRoute(seedViewModel.seeds, coordinates: trail.coordinates) }
     private var isMultiDay: Bool { estimatedMinutes > 300 }
-    private var campRecommendations: [CampRecommendation] {
-        guard !isLoadingElevation else { return [] }
-        let campSeeds = nearbySeeds.filter { $0.seed.seedType == .camp }
-        guard campSeeds.isEmpty else { return [] }
-        return computeCampRecommendations(
-            coordinates: trail.coordinates,
-            elevations: elevations,
-            totalDistanceM: trail.distanceM,
-            estimatedMinutes: estimatedMinutes
-        )
-    }
 
     private var isDownloaded: Bool {
         offlineState == .done || offlineManager.isRegionDownloaded(coordinates: trail.coordinates)
@@ -135,11 +125,11 @@ struct TrailDetailView: View {
                     }
 
                     if isMultiDay {
-                        DayBreakdownSection(
-                            campSeeds: nearbySeeds.filter { $0.seed.seedType == .camp },
-                            recommendations: campRecommendations,
-                            totalDistanceM: trail.distanceM,
-                            estimatedMinutes: estimatedMinutes
+                        MultiDayPlanSection(
+                            coordinates: trail.coordinates,
+                            elevations: elevations,
+                            seeds: nearbySeeds,
+                            numDays: $numDays
                         )
                     }
 
@@ -282,11 +272,20 @@ struct TrailDetailView: View {
         guard elevations == nil else { return }
         if let prefetched = trail.elevationProfile {
             elevations = prefetched
+            updateDefaultDays(from: prefetched)
             return
         }
         isLoadingElevation = true
-        elevations = try? await TrailSearchService.shared.fetchElevation(for: trail)
+        let fetched = try? await TrailSearchService.shared.fetchElevation(for: trail)
+        elevations = fetched
         isLoadingElevation = false
+        if let elevs = fetched { updateDefaultDays(from: elevs) }
+    }
+
+    private func updateDefaultDays(from elevs: [Double]) {
+        let s = elevationStatsFromProfile(elevs)
+        let gain = s.hasData ? s.gain : trail.elevationGainM
+        numDays = max(2, (naismithMinutes(distanceM: trail.distanceM, elevationGainM: gain) + 479) / 480)
     }
 
     private func networkLabel(_ network: String) -> String {

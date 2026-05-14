@@ -322,3 +322,71 @@ func computeCampRecommendations(
     }
     return result
 }
+
+// MARK: - Day segments
+
+struct DaySegment: Identifiable {
+    let id = UUID()
+    let day: Int
+    let distanceM: Double
+    let elevationGainM: Double
+    let estimatedMinutes: Int
+    let seeds: [SeedOnRoute]
+    let campStop: String?
+}
+
+func computeDaySegments(
+    coordinates: [CLLocationCoordinate2D],
+    elevations: [Double]?,
+    seeds: [SeedOnRoute],
+    numDays: Int
+) -> [DaySegment] {
+    guard coordinates.count >= 2, numDays >= 1 else { return [] }
+
+    var cumDist: [Double] = [0]
+    for i in 1..<coordinates.count {
+        cumDist.append(cumDist[i-1] + haversineM(coordinates[i-1], coordinates[i]))
+    }
+    let totalDist = cumDist.last ?? 0
+    guard totalDist > 0 else { return [] }
+
+    let breakpoints: [Double] = (1...numDays).map { totalDist * Double($0) / Double(numDays) }
+
+    var result: [DaySegment] = []
+    var prevDist = 0.0
+
+    for (idx, endDist) in breakpoints.enumerated() {
+        let dayNum = idx + 1
+        let dayDist = endDist - prevDist
+
+        var gainM = 0.0
+        if let elevs = elevations, elevs.count >= 2 {
+            let t0 = prevDist / totalDist
+            let t1 = min(endDist / totalDist, 1.0)
+            let e0 = max(0, Int((t0 * Double(elevs.count - 1)).rounded()))
+            let e1 = min(Int((t1 * Double(elevs.count - 1)).rounded()), elevs.count - 1)
+            if e1 > e0 {
+                for i in (e0 + 1)...e1 {
+                    let diff = elevs[i] - elevs[i - 1]
+                    if diff > 0 { gainM += diff }
+                }
+            }
+        }
+
+        let daySeeds = seeds.filter { $0.distanceAlongM > prevDist && $0.distanceAlongM <= endDist }
+        let campStop: String? = dayNum == numDays
+            ? "Finish"
+            : daySeeds.filter { $0.seed.seedType == .camp }.last.map { $0.seed.title }
+
+        result.append(DaySegment(
+            day: dayNum,
+            distanceM: dayDist,
+            elevationGainM: gainM,
+            estimatedMinutes: naismithMinutes(distanceM: dayDist, elevationGainM: gainM),
+            seeds: daySeeds,
+            campStop: campStop
+        ))
+        prevDist = endDist
+    }
+    return result
+}
