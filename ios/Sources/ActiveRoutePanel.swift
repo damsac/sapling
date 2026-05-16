@@ -5,7 +5,11 @@ struct ActiveRoutePanel: View {
     let route: FfiRoute
     let routeCoords: [CLLocationCoordinate2D]
     let userLocation: CLLocationCoordinate2D?
+    let isDownloaded: Bool
+    let isDownloading: Bool
+    let downloadProgress: Float
     let onEnd: () -> Void
+    let onDownload: () -> Void
 
     private var total: Double { totalRouteLength(routeCoords) }
 
@@ -101,6 +105,31 @@ struct ActiveRoutePanel: View {
                             .font(.caption)
                             .foregroundStyle(SaplingColors.ink)
                         Spacer()
+                    }
+                }
+
+                if !isDownloaded {
+                    HStack(spacing: 6) {
+                        if isDownloading {
+                            ProgressView(value: downloadProgress)
+                                .tint(SaplingColors.brand)
+                                .frame(maxWidth: .infinity)
+                            Text("\(Int(downloadProgress * 100))%")
+                                .font(.caption2)
+                                .foregroundStyle(SaplingColors.bark)
+                                .monospacedDigit()
+                        } else {
+                            Button(action: onDownload) {
+                                Label("Save offline", systemImage: "arrow.down.to.line.circle")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(SaplingColors.brand)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 5)
+                                    .background(SaplingColors.brand.opacity(0.1), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            Spacer()
+                        }
                     }
                 }
             }

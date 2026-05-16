@@ -262,11 +262,20 @@ struct ContentView: View {
                                 route: route,
                                 routeCoords: routeCoords,
                                 userLocation: viewModel.currentLocation?.coordinate,
+                                isDownloaded: offlineManager.isRegionDownloaded(coordinates: routeCoords),
+                                isDownloading: offlineManager.isDownloading,
+                                downloadProgress: offlineManager.activeDownloadProgress,
                                 onEnd: {
                                     withAnimation {
                                         displayRoute = nil
                                         activeRoute = nil
                                     }
+                                },
+                                onDownload: {
+                                    offlineManager.downloadRegion(
+                                        name: route.name,
+                                        coordinates: routeCoords
+                                    )
                                 }
                             )
                             .transition(.move(edge: .bottom).combined(with: .opacity))
