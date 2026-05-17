@@ -144,8 +144,15 @@ actor TrailSearchService {
         default: break
         }
         if tags["operator"] != nil { score += 1.5 }
+        if tags["ref"] != nil      { score += 1.5 }
         if tags["distance"] != nil { score += 1.0 }
         if tags["sac_scale"] != nil { score += 0.5 }
+        switch tags["trail_visibility"] as? String {
+        case "excellent": score += 1.0
+        case "good":      score += 0.5
+        default: break
+        }
+        if (tags["access"] as? String) == "private" { score -= 10.0 }
         return score
     }
 
@@ -192,6 +199,11 @@ actor TrailSearchService {
             var allowsDogs: Bool?
             var hasWater: Bool?
             var hasCamping: Bool?
+            var trailVisibility: String?
+            var surface: String?
+            var website: String?
+            var isFeeRequired: Bool?
+            var osmAscent: Double?
             var relevanceScore: Double
         }
 
@@ -215,6 +227,11 @@ actor TrailSearchService {
             let allowsDogs: Bool? = dogTag.map { ["yes", "leashed", "on_leash"].contains($0) }
             let hasWater: Bool? = (tags["drinking_water"] as? String).map { $0 == "yes" }
             let hasCamping: Bool? = (tags["camping"] as? String).map { ["yes", "permitted"].contains($0) }
+            let trailVisibility = tags["trail_visibility"] as? String
+            let surface = tags["surface"] as? String
+            let website = (tags["website"] as? String) ?? (tags["url"] as? String)
+            let isFeeRequired: Bool? = (tags["fee"] as? String).map { $0 == "yes" }
+            let osmAscent: Double? = (tags["ascent"] as? String).flatMap { Double($0) }
 
             var taggedDistM: Double = 0
             if let distRaw = tags["distance"] as? String {
@@ -240,6 +257,8 @@ actor TrailSearchService {
                         id: elemId, segments: [seg], distanceM: segDist,
                         sacScale: sacScale, network: network, description: description,
                         allowsDogs: allowsDogs, hasWater: hasWater, hasCamping: hasCamping,
+                        trailVisibility: trailVisibility, surface: surface,
+                        website: website, isFeeRequired: isFeeRequired, osmAscent: osmAscent,
                         relevanceScore: relevanceScore(tags: tags, isRelation: false)
                     )
                 } else {
@@ -249,6 +268,11 @@ actor TrailSearchService {
                     wayAccByName[name]!.allowsDogs = wayAccByName[name]!.allowsDogs ?? allowsDogs
                     wayAccByName[name]!.hasWater = wayAccByName[name]!.hasWater ?? hasWater
                     wayAccByName[name]!.hasCamping = wayAccByName[name]!.hasCamping ?? hasCamping
+                    wayAccByName[name]!.trailVisibility = wayAccByName[name]!.trailVisibility ?? trailVisibility
+                    wayAccByName[name]!.surface = wayAccByName[name]!.surface ?? surface
+                    wayAccByName[name]!.website = wayAccByName[name]!.website ?? website
+                    wayAccByName[name]!.isFeeRequired = wayAccByName[name]!.isFeeRequired ?? isFeeRequired
+                    wayAccByName[name]!.osmAscent = wayAccByName[name]!.osmAscent ?? osmAscent
                 }
 
             } else {
@@ -290,6 +314,11 @@ actor TrailSearchService {
                     description: description, sacScale: sacScale, network: network,
                     allowsDogs: allowsDogs, hasWater: hasWater, hasCamping: hasCamping
                 )
+                trail.trailVisibility = trailVisibility
+                trail.surface = surface
+                trail.website = website
+                trail.isFeeRequired = isFeeRequired
+                trail.osmAscent = osmAscent
                 trail.relevanceScore = relevanceScore(tags: tags, isRelation: true)
                 if let idx = seenByName[name] {
                     results[idx] = trail
@@ -314,6 +343,11 @@ actor TrailSearchService {
                 description: acc.description, sacScale: acc.sacScale, network: acc.network,
                 allowsDogs: acc.allowsDogs, hasWater: acc.hasWater, hasCamping: acc.hasCamping
             )
+            trail.trailVisibility = acc.trailVisibility
+            trail.surface = acc.surface
+            trail.website = acc.website
+            trail.isFeeRequired = acc.isFeeRequired
+            trail.osmAscent = acc.osmAscent
             trail.relevanceScore = acc.relevanceScore
             seenByName[name] = results.count
             results.append(trail)

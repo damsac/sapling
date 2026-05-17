@@ -12,6 +12,11 @@ struct TrailResult: Identifiable {
     var allowsDogs: Bool? = nil
     var hasWater: Bool? = nil
     var hasCamping: Bool? = nil
+    var trailVisibility: String? = nil
+    var surface: String? = nil
+    var website: String? = nil
+    var isFeeRequired: Bool? = nil
+    var osmAscent: Double? = nil
     var elevationProfile: [Double]? = nil
     var relevanceScore: Double = 0
 }
@@ -43,9 +48,38 @@ enum TrailCategory: String, CaseIterable {
 
 extension TrailResult {
     var elevationGainM: Double {
+        if let a = osmAscent { return a }
         guard let p = elevationProfile, p.count >= 2 else { return 0 }
         return zip(p, p.dropFirst()).reduce(0.0) { acc, pair in
             let d = pair.1 - pair.0; return d > 0 ? acc + d : acc
+        }
+    }
+
+    var visibilityLabel: String? {
+        switch trailVisibility {
+        case "excellent":                   return "Well-marked"
+        case "good":                        return "Clear path"
+        case "intermediate":               return "Some route-finding"
+        case "bad":                         return "Faint trail"
+        case "horrible", "no":             return "Expert navigation"
+        default:                            return nil
+        }
+    }
+
+    var visibilityIsWarning: Bool {
+        trailVisibility == "bad" || trailVisibility == "horrible" || trailVisibility == "no"
+    }
+
+    var surfaceLabel: String? {
+        switch surface?.lowercased() {
+        case "paved", "asphalt", "concrete":            return "Paved"
+        case "unpaved", "dirt", "ground", "earth", "soil": return "Dirt"
+        case "gravel", "fine_gravel", "compacted":      return "Gravel"
+        case "rock", "rocks", "stone", "cobblestone":   return "Rocky"
+        case "grass":                                   return "Grass"
+        case "sand":                                    return "Sand"
+        case "wood", "boardwalk":                       return "Boardwalk"
+        default:                                        return nil
         }
     }
 

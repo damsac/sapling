@@ -75,6 +75,8 @@ struct TrailDetailView: View {
                     .padding(.vertical, 12)
                     .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 14))
 
+                    trailMetadataRow
+
                     if isLoadingElevation {
                         HStack(spacing: 10) {
                             ProgressView()
@@ -248,6 +250,48 @@ struct TrailDetailView: View {
             if packs.first(where: { $0.id == id })?.isComplete == true {
                 offlineState = .done
             }
+        }
+    }
+
+    @ViewBuilder
+    private var trailMetadataRow: some View {
+        let chips: [(icon: String, label: String, isWarning: Bool)] = [
+            trail.visibilityLabel.map { ("eye", $0, trail.visibilityIsWarning) },
+            trail.surfaceLabel.map { ("figure.walk", $0, false) },
+            trail.isFeeRequired == true ? ("dollarsign.circle", "Fee required", true) : nil,
+        ].compactMap { $0 }
+
+        if !chips.isEmpty || trail.website != nil {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(chips, id: \.label) { chip in
+                        Label(chip.label, systemImage: chip.icon)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(chip.isWarning ? SaplingColors.accent : SaplingColors.bark)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                chip.isWarning
+                                    ? SaplingColors.accent.opacity(0.1)
+                                    : SaplingColors.parchment,
+                                in: Capsule()
+                            )
+                    }
+                    if let urlString = trail.website, let url = URL(string: urlString) {
+                        Link(destination: url) {
+                            Label("More info", systemImage: "safari")
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(SaplingColors.brand)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(SaplingColors.brand.opacity(0.08), in: Capsule())
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+            }
+            .background(SaplingColors.stone, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
